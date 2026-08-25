@@ -1,8 +1,9 @@
 using System.Net;
 using System.Text;
 using LibVLCSharp.Shared;
-
+using LibVLCSharp.Platforms.Maui;
 namespace VostokWarehouseMobile;
+private VideoView? videoView;
 
 public partial class MainPage : ContentPage
 {
@@ -29,6 +30,8 @@ public partial class MainPage : ContentPage
     public MainPage()
     {
         InitializeComponent();
+        videoView = new VideoView();
+        VideoContainer.Children.Add(videoView);
         _libVLC = new LibVLC();
         foreach (var name in cameras.Keys) CameraPicker.Items.Add(name);
         PasswordEntry.Text = Preferences.Default.Get("hik_password", "");
@@ -45,7 +48,7 @@ public partial class MainPage : ContentPage
             _mediaPlayer?.Stop();
             _mediaPlayer?.Dispose();
             _mediaPlayer = new MediaPlayer(_libVLC);
-            VideoView.MediaPlayer = _mediaPlayer;
+            videoView!.MediaPlayer = _mediaPlayer;
             using var media = new Media(_libVLC, new Uri(rtsp));
             _mediaPlayer.Play(media);
             CameraStatus.Text = $"Playing: {name}";
