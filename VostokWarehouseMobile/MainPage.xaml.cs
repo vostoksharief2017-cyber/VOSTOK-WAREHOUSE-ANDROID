@@ -76,7 +76,7 @@ public partial class MainPage : ContentPage
             };
             using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
             var url = $"http://{ip}/ISAPI/AccessControl/RemoteControl/door/1";
-            var xml = "<?xml version="1.0" encoding="UTF-8"?><RemoteControlDoor><cmd>open</cmd></RemoteControlDoor>";
+            var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><RemoteControlDoor><cmd>open</cmd></RemoteControlDoor>";
             using var content = new StringContent(xml, Encoding.UTF8, "application/xml");
             using var response = await client.PutAsync(url, content);
             if (response.IsSuccessStatusCode)
