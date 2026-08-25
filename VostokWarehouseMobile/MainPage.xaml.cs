@@ -13,10 +13,10 @@ public partial class MainPage : ContentPage
 
     private readonly Dictionary<string, string> cameras = new()
     {
-        ["WareHouse-7"] = "rtsp://admin:PASSWORD@192.168.5.131:554/Streaming/Channels/101",
-        ["WareHouse-9"] = "rtsp://admin:PASSWORD@192.168.5.133:554/Streaming/Channels/101",
-        ["WareHouse-4"] = "rtsp://admin:PASSWORD@192.168.5.134:554/Streaming/Channels/101",
-        ["WareHouse-5"] = "rtsp://admin:PASSWORD@192.168.5.132:554/Streaming/Channels/101"
+        ["WareHouse-7"] = "rtsp://admin:Vos@3558817@192.168.5.131:554/Streaming/Channels/101",
+        ["WareHouse-9"] = "rtsp://admin:Vos@3558817@192.168.5.133:554/Streaming/Channels/101",
+        ["WareHouse-4"] = "rtsp://admin:Vos@3558817@192.168.5.134:554/Streaming/Channels/101",
+        ["WareHouse-5"] = "rtsp://admin:Vos@3558817@192.168.5.132:554/Streaming/Channels/101"
     };
 
     private readonly Dictionary<string, string> doors = new()
