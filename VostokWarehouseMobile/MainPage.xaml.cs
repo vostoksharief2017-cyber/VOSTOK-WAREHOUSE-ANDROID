@@ -1,7 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using LibVLCSharp.Shared;
 
 namespace VostokWarehouseMobile;
 
@@ -14,19 +13,6 @@ public partial class MainPage : ContentPage
     private const string HikvisionUserName = "admin";
 
     private const string HikvisionPassword = "Vos@3558817";
-
-
-    // ============================================================
-    // LIBVLC
-    // ============================================================
-
-    private LibVLC? _libVLC;
-
-    private MediaPlayer? _mediaPlayer;
-
-    private Media? _currentMedia;
-
-    private bool _libVLCInitialized;
 
 
     // ============================================================
@@ -73,62 +59,17 @@ public partial class MainPage : ContentPage
             CameraStatus.Text = "Select a camera";
 
             StatusLabel.Text = "Ready";
+
+            VideoStatus.Text =
+                "Select a camera for Live View";
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = "Startup Error";
-
-            StatusLabel.Text = ex.Message;
-        }
-    }
-
-
-    // ============================================================
-    // INITIALIZE LIBVLC
-    // ============================================================
-
-    private bool InitializeLibVLC()
-    {
-        try
-        {
-            if (_libVLCInitialized &&
-                _libVLC != null)
-            {
-                return true;
-            }
+            CameraStatus.Text =
+                "Startup Error";
 
             StatusLabel.Text =
-                "Initializing video engine...";
-
-            /*
-             * LibVLCSharp documentation supports Core.Initialize()
-             * for loading the native LibVLC libraries.
-             */
-
-            Core.Initialize();
-
-            _libVLC =
-                new LibVLC(
-                    "--network-caching=1000",
-                    "--rtsp-tcp");
-
-            _libVLCInitialized = true;
-
-            StatusLabel.Text =
-                "Video engine ready";
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _libVLCInitialized = false;
-
-            _libVLC = null;
-
-            StatusLabel.Text =
-                $"LibVLC Error: {ex.Message}";
-
-            return false;
+                ex.Message;
         }
     }
 
@@ -141,261 +82,45 @@ public partial class MainPage : ContentPage
         object? sender,
         EventArgs e)
     {
-        try
-        {
-            if (CameraPicker.SelectedItem
-                is not string cameraName)
-            {
-                return;
-            }
+        if (CameraPicker.SelectedItem is not string cameraName)
+            return;
 
-            if (!cameras.TryGetValue(
-                    cameraName,
-                    out string? ip))
-            {
-                CameraStatus.Text =
-                    "Camera IP not found.";
-
-                return;
-            }
-
-            CameraStatus.Text =
-                $"Selected: {cameraName}";
-
-            StatusLabel.Text =
-                $"Camera IP: {ip}";
-
-            bool initialized =
-                InitializeLibVLC();
-
-            if (!initialized)
-            {
-                await DisplayAlertAsync(
-                    "Live View Error",
-                    "LibVLC could not be initialized.\n\n" +
-                    "Please check the LibVLC Android package.",
-                    "OK");
-
-                return;
-            }
-
-            await StartCameraAsync(
+        if (!cameras.TryGetValue(
                 cameraName,
-                ip);
-        }
-        catch (Exception ex)
+                out string? ip))
         {
             CameraStatus.Text =
-                "Camera selection error.";
+                "Camera IP not found.";
 
-            StatusLabel.Text =
-                ex.Message;
+            return;
         }
-    }
 
+        CameraStatus.Text =
+            $"Selected: {cameraName}";
 
-    // ============================================================
-    // START CAMERA
-    // ============================================================
+        StatusLabel.Text =
+            $"Camera IP: {ip}";
 
-    private async Task StartCameraAsync(
-        string cameraName,
-        string ip)
-    {
-        try
-        {
-            if (_libVLC == null)
-            {
-                CameraStatus.Text =
-                    "LibVLC is not initialized.";
+        VideoStatus.Text =
+            $"Live View: {cameraName}";
 
-                return;
-            }
+        /*
+         * IMPORTANT:
+         *
+         * LibVLC is intentionally NOT loaded here yet.
+         *
+         * Your previous Android crash happens when the native
+         * LibVLC library is loaded.
+         *
+         * We first confirm that this complete project opens,
+         * allows camera selection and door control.
+         */
 
-
-            // ----------------------------------------------------
-            // STOP PREVIOUS CAMERA
-            // ----------------------------------------------------
-
-            StopCamera();
-
-
-            // ----------------------------------------------------
-            // HIKVISION RTSP PASSWORD
-            // ----------------------------------------------------
-
-            string encodedPassword =
-                Uri.EscapeDataString(
-                    HikvisionPassword);
-
-
-            // ----------------------------------------------------
-            // HIKVISION RTSP URL
-            // ----------------------------------------------------
-
-            string rtspUrl =
-                $"rtsp://{HikvisionUserName}:" +
-                $"{encodedPassword}@" +
-                $"{ip}:554/" +
-                "Streaming/Channels/101";
-
-
-            CameraStatus.Text =
-                $"Connecting to {cameraName}...";
-
-            StatusLabel.Text =
-                "Connecting to RTSP stream...";
-
-
-            // ----------------------------------------------------
-            // CREATE MEDIAPLAYER
-            // ----------------------------------------------------
-
-            _mediaPlayer =
-                new MediaPlayer(
-                    _libVLC);
-
-
-            // ----------------------------------------------------
-            // CONNECT MEDIAPLAYER TO VIDEOVIEW
-            // ----------------------------------------------------
-
-            VideoView.MediaPlayer =
-                _mediaPlayer;
-
-
-            // ----------------------------------------------------
-            // CREATE MEDIA
-            // ----------------------------------------------------
-
-            _currentMedia =
-                new Media(
-                    _libVLC,
-                    new Uri(rtspUrl));
-
-
-            // ----------------------------------------------------
-            // RTSP OPTIONS
-            // ----------------------------------------------------
-
-            _currentMedia.AddOption(
-                ":rtsp-tcp");
-
-            _currentMedia.AddOption(
-                ":network-caching=1000");
-
-            _currentMedia.AddOption(
-                ":live-caching=1000");
-
-            _currentMedia.AddOption(
-                ":file-caching=1000");
-
-
-            // ----------------------------------------------------
-            // PLAY
-            // ----------------------------------------------------
-
-            bool started =
-                _mediaPlayer.Play(
-                    _currentMedia);
-
-
-            if (started)
-            {
-                CameraStatus.Text =
-                    $"Live View: {cameraName}";
-
-                StatusLabel.Text =
-                    $"Connected - {ip}";
-            }
-            else
-            {
-                CameraStatus.Text =
-                    "Unable to start camera stream.";
-
-                StatusLabel.Text =
-                    "RTSP playback failed.";
-
-                await DisplayAlertAsync(
-                    "Live View",
-                    "VLC could not start the Hikvision RTSP stream.",
-                    "OK");
-            }
-        }
-        catch (Exception ex)
-        {
-            CameraStatus.Text =
-                "Camera Error";
-
-            StatusLabel.Text =
-                ex.Message;
-
-            await DisplayAlertAsync(
-                "Camera Error",
-                $"Unable to connect to {cameraName}.\n\n" +
-                $"IP: {ip}\n\n" +
-                ex.Message,
-                "OK");
-        }
-    }
-
-
-    // ============================================================
-    // STOP CAMERA
-    // ============================================================
-
-    private void StopCamera()
-    {
-        try
-        {
-            // ----------------------------------------------------
-            // DETACH VIDEOVIEW
-            // ----------------------------------------------------
-
-            if (VideoView != null)
-            {
-                VideoView.MediaPlayer = null;
-            }
-
-
-            // ----------------------------------------------------
-            // STOP MEDIAPLAYER
-            // ----------------------------------------------------
-
-            if (_mediaPlayer != null)
-            {
-                try
-                {
-                    if (_mediaPlayer.IsPlaying)
-                    {
-                        _mediaPlayer.Stop();
-                    }
-                }
-                catch
-                {
-                }
-
-                _mediaPlayer.Dispose();
-
-                _mediaPlayer = null;
-            }
-
-
-            // ----------------------------------------------------
-            // DISPOSE MEDIA
-            // ----------------------------------------------------
-
-            if (_currentMedia != null)
-            {
-                _currentMedia.Dispose();
-
-                _currentMedia = null;
-            }
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
+        await DisplayAlertAsync(
+            "Live View",
+            $"Camera selected:\n\n{cameraName}\n{ip}\n\n" +
+            "Live video engine is currently disabled while the Android LibVLC package is being corrected.",
+            "OK");
     }
 
 
@@ -475,7 +200,7 @@ public partial class MainPage : ContentPage
         try
         {
             // ----------------------------------------------------
-            // HIKVISION DOOR API
+            // HIKVISION API URL
             // ----------------------------------------------------
 
             string url =
@@ -485,7 +210,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // XML COMMAND
+            // OPEN DOOR XML
             // ----------------------------------------------------
 
             string xml =
@@ -528,7 +253,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // IF CAMERA ACCEPTS WITHOUT AUTH
+            // SUCCESS
             // ----------------------------------------------------
 
             if (firstResponse.IsSuccessStatusCode)
@@ -543,7 +268,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // EXPECT 401
+            // CHECK 401
             // ----------------------------------------------------
 
             if (firstResponse.StatusCode !=
@@ -560,7 +285,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // GET DIGEST HEADER
+            // READ DIGEST CHALLENGE
             // ----------------------------------------------------
 
             string? authenticate =
@@ -699,7 +424,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // BUILD AUTHORIZATION
+            // AUTHORIZATION HEADER
             // ----------------------------------------------------
 
             string authorization =
@@ -945,36 +670,5 @@ public partial class MainPage : ContentPage
         return Convert.ToHexString(
                 bytes)
             .ToLowerInvariant();
-    }
-
-
-    // ============================================================
-    // PAGE DISAPPEARING
-    // ============================================================
-
-    protected override void OnDisappearing()
-    {
-        try
-        {
-            StopCamera();
-
-
-            if (_libVLC != null)
-            {
-                _libVLC.Dispose();
-
-                _libVLC = null;
-            }
-
-
-            _libVLCInitialized = false;
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
-
-
-        base.OnDisappearing();
     }
 }
