@@ -4,90 +4,100 @@
              x:Class="VostokWarehouseMobile.MainPage"
              Title="VOSTOK-WAREHOUSE">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="16"
-                             Spacing="10">
+    <Grid>
 
-            <Label Text="VOSTOK-WAREHOUSE"
-                   FontSize="26"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center" />
+        <!-- Background Image -->
+        <Image Source="background.jpg"
+               Aspect="AspectFill"
+               Opacity="0.25" />
 
-            <Label Text="Warehouse Camera"
-                   FontSize="17"
-                   FontAttributes="Bold" />
+        <!-- Main Content -->
+        <ScrollView>
+            <VerticalStackLayout Padding="16"
+                                 Spacing="10">
 
-            <Picker x:Name="CameraPicker"
-                    Title="Select Warehouse Camera"
-                    SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
+                <Label Text="VOSTOK-WAREHOUSE"
+                       FontSize="26"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center" />
 
-            <!-- Camera display area -->
-            <Border StrokeThickness="1"
-                    HeightRequest="220">
+                <Label Text="Warehouse Camera"
+                       FontSize="17"
+                       FontAttributes="Bold" />
 
-                <Grid x:Name="VideoContainer" />
+                <Picker x:Name="CameraPicker"
+                        Title="Select Warehouse Camera"
+                        SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
 
-            </Border>
+                <!-- Camera display area -->
+                <Border StrokeThickness="1"
+                        HeightRequest="220">
 
-            <Label x:Name="CameraStatus"
-                   Text="Select a camera"
-                   FontSize="13" />
+                    <Grid x:Name="VideoContainer" />
 
-            <BoxView HeightRequest="1" />
+                </Border>
 
-            <Label Text="Door Control"
-                   FontSize="17"
-                   FontAttributes="Bold" />
+                <Label x:Name="CameraStatus"
+                       Text="Select a camera"
+                       FontSize="13" />
 
-            <Grid ColumnDefinitions="*,*"
-                  RowDefinitions="Auto,Auto,Auto"
-                  ColumnSpacing="8"
-                  RowSpacing="8">
+                <BoxView HeightRequest="1" />
 
-                <Button Text="Door 1 - WH7"
-                        Grid.Row="0"
-                        Grid.Column="0"
-                        Clicked="Door1_Clicked" />
+                <Label Text="Door Control"
+                       FontSize="17"
+                       FontAttributes="Bold" />
 
-                <Button Text="Door 2 - WH9"
-                        Grid.Row="0"
-                        Grid.Column="1"
-                        Clicked="Door2_Clicked" />
+                <Grid ColumnDefinitions="*,*"
+                      RowDefinitions="Auto,Auto,Auto"
+                      ColumnSpacing="8"
+                      RowSpacing="8">
 
-                <!-- Door 3 disabled -->
-                <Button Text="Door 3 - DISABLED"
-                        Grid.Row="1"
-                        Grid.Column="0"
-                        IsEnabled="False" />
+                    <Button Text="Door 1 - WH7"
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Clicked="Door1_Clicked" />
 
-                <Button Text="Door 4 - WH4"
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        Clicked="Door4_Clicked" />
+                    <Button Text="Door 2 - WH9"
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Clicked="Door2_Clicked" />
 
-                <Button Text="Door 5 - WH5"
-                        Grid.Row="2"
-                        Grid.Column="0"
-                        Clicked="Door5_Clicked" />
+                    <!-- Door 3 disabled -->
+                    <Button Text="Door 3 - DISABLED"
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            IsEnabled="False" />
 
-            </Grid>
+                    <Button Text="Door 4 - WH4"
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Clicked="Door4_Clicked" />
 
-            <Label Text="Hikvision Password"
-                   FontSize="17"
-                   FontAttributes="Bold" />
+                    <Button Text="Door 5 - WH5"
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Clicked="Door5_Clicked" />
 
-            <Entry x:Name="PasswordEntry"
-                   Placeholder="Enter Hikvision password"
-                   IsPassword="True" />
+                </Grid>
 
-            <Button Text="Save Password"
-                    Clicked="SavePassword_Clicked" />
+                <Label Text="Hikvision Password"
+                       FontSize="17"
+                       FontAttributes="Bold" />
 
-            <Label x:Name="StatusLabel"
-                   Text="Ready"
-                   FontSize="13" />
+                <Entry x:Name="PasswordEntry"
+                       Placeholder="Enter Hikvision password"
+                       IsPassword="True" />
 
-        </VerticalStackLayout>
-    </ScrollView>
+                <Button Text="Save Password"
+                        Clicked="SavePassword_Clicked" />
+
+                <Label x:Name="StatusLabel"
+                       Text="Ready"
+                       FontSize="13" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
 
 </ContentPage>
