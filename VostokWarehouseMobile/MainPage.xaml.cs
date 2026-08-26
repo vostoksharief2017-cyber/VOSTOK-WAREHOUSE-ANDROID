@@ -1,7 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using LibVLCSharp.Shared;
 
 namespace VostokWarehouseMobile;
 
@@ -13,16 +12,6 @@ public partial class MainPage : ContentPage
 
     private const string HikvisionUserName = "admin";
     private const string HikvisionPassword = "Vos@3558817";
-
-    // ============================================================
-    // LIBVLC
-    // ============================================================
-
-    private LibVLC? _libVLC;
-    private MediaPlayer? _mediaPlayer;
-    private Media? _currentMedia;
-
-    private bool _libVLCInitialized = false;
 
     // ============================================================
     // CAMERA LIST
@@ -74,50 +63,6 @@ public partial class MainPage : ContentPage
     }
 
     // ============================================================
-    // INITIALIZE LIBVLC ONLY WHEN NEEDED
-    // ============================================================
-
-    private bool InitializeLibVLC()
-    {
-        try
-        {
-            if (_libVLCInitialized &&
-                _libVLC != null)
-            {
-                return true;
-            }
-
-            StatusLabel.Text =
-                "Initializing video engine...";
-
-            Core.Initialize();
-
-            _libVLC =
-                new LibVLC();
-
-            _libVLCInitialized = true;
-
-            StatusLabel.Text =
-                "Video engine ready.";
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _libVLCInitialized = false;
-            _libVLC = null;
-
-            CameraStatus.Text =
-                "LibVLC initialization failed.";
-
-            StatusLabel.Text =
-                ex.Message;
-
-            return false;
-        }
-    }
-
-    // ============================================================
     // CAMERA SELECTION
     // ============================================================
 
@@ -132,154 +77,24 @@ public partial class MainPage : ContentPage
                 cameraName,
                 out string? ip))
         {
-            CameraStatus.Text =
-                "Camera IP not found.";
-
+            CameraStatus.Text = "Camera IP not found.";
             return;
         }
 
-        if (!InitializeLibVLC())
-        {
-            await DisplayAlertAsync(
-                "Video Error",
-                "LibVLC could not be initialized.\n\n" +
-                "The application itself is running, but the video engine could not start.",
-                "OK");
+        CameraStatus.Text =
+            $"Camera selected: {cameraName}";
 
-            return;
-        }
+        StatusLabel.Text =
+            $"IP: {ip}";
 
-        await StartCameraAsync(
-            cameraName,
-            ip);
+        await DisplayAlertAsync(
+            "Live View",
+            "Live View is temporarily disabled while we test application startup.",
+            "OK");
     }
 
     // ============================================================
-    // START LIVE VIEW
-    // ============================================================
-
-    private async Task StartCameraAsync(
-        string cameraName,
-        string ip)
-    {
-        try
-        {
-            if (_libVLC == null)
-            {
-                CameraStatus.Text =
-                    "LibVLC is not initialized.";
-
-                return;
-            }
-
-            StopCamera();
-
-            string encodedPassword =
-                Uri.EscapeDataString(
-                    HikvisionPassword);
-
-            string rtspUrl =
-                $"rtsp://{HikvisionUserName}:" +
-                $"{encodedPassword}@" +
-                $"{ip}:554/" +
-                "Streaming/Channels/101";
-
-            CameraStatus.Text =
-                $"Connecting to {cameraName}...";
-
-            StatusLabel.Text =
-                "Connecting...";
-
-            _mediaPlayer =
-                new MediaPlayer(_libVLC);
-
-            VideoView.MediaPlayer =
-                _mediaPlayer;
-
-            _currentMedia =
-                new Media(
-                    _libVLC,
-                    new Uri(rtspUrl));
-
-            _currentMedia.AddOption(
-                ":rtsp-tcp");
-
-            _currentMedia.AddOption(
-                ":network-caching=1000");
-
-            bool started =
-                _mediaPlayer.Play(
-                    _currentMedia);
-
-            if (started)
-            {
-                CameraStatus.Text =
-                    $"Live View: {cameraName}";
-
-                StatusLabel.Text =
-                    "Live View Connected";
-            }
-            else
-            {
-                CameraStatus.Text =
-                    "Unable to start camera stream.";
-
-                StatusLabel.Text =
-                    "Stream Failed";
-            }
-        }
-        catch (Exception ex)
-        {
-            CameraStatus.Text =
-                "Camera Error";
-
-            StatusLabel.Text =
-                ex.Message;
-
-            await DisplayAlertAsync(
-                "Camera Error",
-                ex.Message,
-                "OK");
-        }
-    }
-
-    // ============================================================
-    // STOP CAMERA
-    // ============================================================
-
-    private void StopCamera()
-    {
-        try
-        {
-            if (VideoView != null)
-            {
-                VideoView.MediaPlayer = null;
-            }
-
-            if (_mediaPlayer != null)
-            {
-                if (_mediaPlayer.IsPlaying)
-                {
-                    _mediaPlayer.Stop();
-                }
-
-                _mediaPlayer.Dispose();
-                _mediaPlayer = null;
-            }
-
-            if (_currentMedia != null)
-            {
-                _currentMedia.Dispose();
-                _currentMedia = null;
-            }
-        }
-        catch
-        {
-        }
-    }
-
-    // ============================================================
-    // DOOR BUTTONS
+    // DOOR 1
     // ============================================================
 
     private async void Door1_Clicked(
@@ -290,6 +105,10 @@ public partial class MainPage : ContentPage
             "Door 1 - WH7");
     }
 
+    // ============================================================
+    // DOOR 2
+    // ============================================================
+
     private async void Door2_Clicked(
         object sender,
         EventArgs e)
@@ -298,6 +117,10 @@ public partial class MainPage : ContentPage
             "Door 2 - WH9");
     }
 
+    // ============================================================
+    // DOOR 4
+    // ============================================================
+
     private async void Door4_Clicked(
         object sender,
         EventArgs e)
@@ -305,6 +128,10 @@ public partial class MainPage : ContentPage
         await OpenDoorAsync(
             "Door 4 - WH4");
     }
+
+    // ============================================================
+    // DOOR 5
+    // ============================================================
 
     private async void Door5_Clicked(
         object sender,
@@ -353,9 +180,10 @@ public partial class MainPage : ContentPage
                         TimeSpan.FromSeconds(10)
                 };
 
-            // ----------------------------------------------------
-            // FIRST REQUEST - GET DIGEST CHALLENGE
-            // ----------------------------------------------------
+            // ====================================================
+            // FIRST REQUEST
+            // GET DIGEST CHALLENGE
+            // ====================================================
 
             using HttpRequestMessage firstRequest =
                 new HttpRequestMessage(
@@ -372,6 +200,10 @@ public partial class MainPage : ContentPage
                 await client.SendAsync(
                     firstRequest);
 
+            // ====================================================
+            // SUCCESS WITHOUT AUTHENTICATION
+            // ====================================================
+
             if (firstResponse.IsSuccessStatusCode)
             {
                 await DisplayAlertAsync(
@@ -381,6 +213,10 @@ public partial class MainPage : ContentPage
 
                 return;
             }
+
+            // ====================================================
+            // EXPECT HTTP 401
+            // ====================================================
 
             if (firstResponse.StatusCode !=
                 HttpStatusCode.Unauthorized)
@@ -394,9 +230,9 @@ public partial class MainPage : ContentPage
                 return;
             }
 
-            // ----------------------------------------------------
-            // DIGEST CHALLENGE
-            // ----------------------------------------------------
+            // ====================================================
+            // READ DIGEST CHALLENGE
+            // ====================================================
 
             string? authenticate =
                 firstResponse.Headers
@@ -441,11 +277,19 @@ public partial class MainPage : ContentPage
                 "qop",
                 out string? qop);
 
+            // ====================================================
+            // DIGEST VALUES
+            // ====================================================
+
             string cnonce =
                 CreateRandomHex(16);
 
             string nc =
                 "00000001";
+
+            // ====================================================
+            // HA1
+            // ====================================================
 
             string ha1 =
                 Md5Hash(
@@ -453,12 +297,20 @@ public partial class MainPage : ContentPage
                     $"{realm}:" +
                     $"{HikvisionPassword}");
 
+            // ====================================================
+            // HA2
+            // ====================================================
+
             string uri =
                 new Uri(url).AbsolutePath;
 
             string ha2 =
                 Md5Hash(
                     $"PUT:{uri}");
+
+            // ====================================================
+            // RESPONSE
+            // ====================================================
 
             string responseHash;
 
@@ -491,6 +343,10 @@ public partial class MainPage : ContentPage
                         $"{ha2}");
             }
 
+            // ====================================================
+            // AUTHORIZATION
+            // ====================================================
+
             string authorization =
                 BuildDigestAuthorization(
                     realm,
@@ -501,9 +357,9 @@ public partial class MainPage : ContentPage
                     nc,
                     url);
 
-            // ----------------------------------------------------
-            // SECOND REQUEST - AUTHENTICATED
-            // ----------------------------------------------------
+            // ====================================================
+            // SECOND REQUEST
+            // ====================================================
 
             using HttpRequestMessage secondRequest =
                 new HttpRequestMessage(
@@ -524,6 +380,10 @@ public partial class MainPage : ContentPage
             using HttpResponseMessage secondResponse =
                 await client.SendAsync(
                     secondRequest);
+
+            // ====================================================
+            // SUCCESS
+            // ====================================================
 
             if (secondResponse.IsSuccessStatusCode)
             {
@@ -557,7 +417,7 @@ public partial class MainPage : ContentPage
     }
 
     // ============================================================
-    // DIGEST PARSER
+    // DIGEST CHALLENGE PARSER
     // ============================================================
 
     private static Dictionary<string, string>
@@ -666,12 +526,15 @@ public partial class MainPage : ContentPage
         string input)
     {
         byte[] bytes =
-            Encoding.UTF8.GetBytes(input);
+            Encoding.UTF8.GetBytes(
+                input);
 
         byte[] hash =
-            MD5.HashData(bytes);
+            MD5.HashData(
+                bytes);
 
-        return Convert.ToHexString(hash)
+        return Convert.ToHexString(
+            hash)
             .ToLowerInvariant();
     }
 
@@ -686,28 +549,8 @@ public partial class MainPage : ContentPage
             RandomNumberGenerator.GetBytes(
                 byteCount);
 
-        return Convert.ToHexString(bytes)
+        return Convert.ToHexString(
+            bytes)
             .ToLowerInvariant();
-    }
-
-    // ============================================================
-    // CLEANUP
-    // ============================================================
-
-    protected override void OnDisappearing()
-    {
-        StopCamera();
-
-        try
-        {
-            _libVLC?.Dispose();
-            _libVLC = null;
-            _libVLCInitialized = false;
-        }
-        catch
-        {
-        }
-
-        base.OnDisappearing();
     }
 }
