@@ -3,155 +3,79 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:shared="clr-namespace:LibVLCSharp.MAUI;assembly=LibVLCSharp.MAUI"
-    x:Class="VostokWarehouseMobile.MainPage"
-    Title="VOSTOK-WAREHOUSE">
-<Grid x:Name="VideoContainer" />
+    xmlns:shared="clr-namespace:LibVLCSharp.Platforms.Maui;assembly=LibVLCSharp.MAUI"
+    x:Class="VostokWarehouseMobile.MainPage">
 
-    <Grid>
+    <Grid
+        RowDefinitions="Auto,*,Auto"
+        Padding="10">
 
-        <!-- Background -->
-        <Image
-            Source="background.jpg"
-            Aspect="AspectFill"
-            Opacity="0.15" />
+        <VerticalStackLayout
+            Grid.Row="0"
+            Spacing="10">
 
-        <!-- Main Application -->
-        <ScrollView>
+            <Label
+                Text="VOSTOK WAREHOUSE"
+                FontSize="24"
+                FontAttributes="Bold"
+                HorizontalOptions="Center" />
 
-            <VerticalStackLayout
-                Padding="16"
-                Spacing="10">
+            <Picker
+                x:Name="CameraPicker"
+                Title="Select Camera"
+                SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
 
-                <!-- Header -->
-                <Label
-                    Text="VOSTOK-WAREHOUSE"
-                    FontSize="26"
-                    FontAttributes="Bold"
-                    HorizontalOptions="Center"
-                    TextColor="White" />
+            <Label
+                x:Name="CameraStatus"
+                Text="Select a camera"
+                HorizontalOptions="Center" />
 
-                <!-- ============================= -->
-                <!-- CAMERA -->
-                <!-- ============================= -->
+            <Label
+                x:Name="StatusLabel"
+                Text="Ready"
+                HorizontalOptions="Center" />
 
-                <Label
-                    Text="Warehouse Camera"
-                    FontSize="18"
-                    FontAttributes="Bold"
-                    TextColor="White" />
+        </VerticalStackLayout>
 
-                <Picker
-                    x:Name="CameraPicker"
-                    Title="Select Warehouse Camera"
-                    SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
+        <Border
+            Grid.Row="1"
+            StrokeThickness="1"
+            Padding="0">
 
-                <!-- ============================= -->
-                <!-- LIVE VIDEO -->
-                <!-- ============================= -->
+            <shared:VideoView
+                x:Name="VideoView"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill" />
 
-                <Border
-                    HeightRequest="220"
-                    StrokeThickness="1"
-                    Stroke="Gray">
+        </Border>
 
-                    <Grid BackgroundColor="Black">
+        <Grid
+            Grid.Row="2"
+            ColumnDefinitions="*,*,*,*"
+            ColumnSpacing="5"
+            Margin="0,10,0,0">
 
-                        <shared:VideoView
-                            x:Name="VideoView"
-                            HorizontalOptions="Fill"
-                            VerticalOptions="Fill" />
+            <Button
+                Grid.Column="0"
+                Text="Door 1"
+                Clicked="Door1_Clicked" />
 
-                        <Label
-                            x:Name="VideoPlaceholder"
-                            Text="Select a camera"
-                            TextColor="White"
-                            HorizontalOptions="Center"
-                            VerticalOptions="Center" />
+            <Button
+                Grid.Column="1"
+                Text="Door 2"
+                Clicked="Door2_Clicked" />
 
-                    </Grid>
+            <Button
+                Grid.Column="2"
+                Text="Door 4"
+                Clicked="Door4_Clicked" />
 
-                </Border>
+            <Button
+                Grid.Column="3"
+                Text="Door 5"
+                Clicked="Door5_Clicked" />
 
-                <Label
-                    x:Name="CameraStatus"
-                    Text="Select a camera"
-                    FontSize="13"
-                    TextColor="White" />
-
-                <BoxView
-                    HeightRequest="1"
-                    BackgroundColor="Gray" />
-
-
-                <!-- ============================= -->
-                <!-- DOOR CONTROL -->
-                <!-- ============================= -->
-
-                <Label
-                    Text="Door Control"
-                    FontSize="18"
-                    FontAttributes="Bold"
-                    TextColor="White" />
-
-                <Grid
-                    ColumnDefinitions="*,*"
-                    RowDefinitions="Auto,Auto,Auto"
-                    ColumnSpacing="8"
-                    RowSpacing="8">
-
-                    <Button
-                        Text="Door 1 - WH7"
-                        Grid.Row="0"
-                        Grid.Column="0"
-                        Clicked="Door1_Clicked" />
-
-                    <Button
-                        Text="Door 2 - WH9"
-                        Grid.Row="0"
-                        Grid.Column="1"
-                        Clicked="Door2_Clicked" />
-
-                    <Button
-                        Text="Door 3 - DISABLED"
-                        Grid.Row="1"
-                        Grid.Column="0"
-                        IsEnabled="False" />
-
-                    <Button
-                        Text="Door 4 - WH4"
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        Clicked="Door4_Clicked" />
-
-                    <Button
-                        Text="Door 5 - WH5"
-                        Grid.Row="2"
-                        Grid.Column="0"
-                        Clicked="Door5_Clicked" />
-
-                </Grid>
-
-
-                <!-- ============================= -->
-                <!-- STATUS -->
-                <!-- ============================= -->
-
-                <Label
-                    Text="System Status"
-                    FontSize="17"
-                    FontAttributes="Bold"
-                    TextColor="White" />
-
-                <Label
-                    x:Name="StatusLabel"
-                    Text="Ready"
-                    FontSize="13"
-                    TextColor="White" />
-
-            </VerticalStackLayout>
-
-        </ScrollView>
+        </Grid>
 
     </Grid>
 
