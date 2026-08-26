@@ -1,91 +1,135 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="VostokWarehouseMobile.MainPage"
-             Title="VOSTOK-WAREHOUSE">
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="VostokWarehouseMobile.MainPage"
+    Title="VOSTOK-WAREHOUSE">
 
     <Grid>
 
-        <!-- Background Image -->
-        <Image Source="background.jpg"
-               Aspect="AspectFill"
-               Opacity="0.25" />
+        <!-- Background -->
+        <Image
+            Source="background.jpg"
+            Aspect="AspectFill"
+            Opacity="0.18" />
 
         <!-- Main Content -->
         <ScrollView>
-            <VerticalStackLayout Padding="16"
-                                 Spacing="10">
 
-                <Label Text="VOSTOK-WAREHOUSE"
-                       FontSize="26"
-                       FontAttributes="Bold"
-                       HorizontalOptions="Center" />
+            <VerticalStackLayout
+                Padding="16"
+                Spacing="10">
 
-                <Label Text="Warehouse Camera"
-                       FontSize="17"
-                       FontAttributes="Bold" />
+                <!-- Header -->
+                <Label
+                    Text="VOSTOK-WAREHOUSE"
+                    FontSize="26"
+                    FontAttributes="Bold"
+                    HorizontalOptions="Center"
+                    TextColor="Black" />
 
-                <Picker x:Name="CameraPicker"
-                        Title="Select Warehouse Camera"
-                        SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
+                <!-- Camera Section -->
+                <Label
+                    Text="Warehouse Camera"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    TextColor="Black" />
 
-                <!-- Camera display area -->
-                <Border StrokeThickness="1"
-                        HeightRequest="220">
+                <Picker
+                    x:Name="CameraPicker"
+                    Title="Select Warehouse Camera"
+                    SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
 
-                    <Grid x:Name="VideoContainer" />
+                <!-- Live View -->
+                <Border
+                    StrokeThickness="1"
+                    HeightRequest="220"
+                    Stroke="Gray">
+
+                    <Grid x:Name="VideoContainer">
+
+                        <Label
+                            x:Name="VideoPlaceholder"
+                            Text="Select a camera for live view"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center"
+                            TextColor="Gray" />
+
+                    </Grid>
 
                 </Border>
 
-                <Label x:Name="CameraStatus"
-                       Text="Select a camera"
-                       FontSize="13" />
+                <Label
+                    x:Name="CameraStatus"
+                    Text="Select a camera"
+                    FontSize="13"
+                    TextColor="Black" />
 
-                <BoxView HeightRequest="1" />
+                <BoxView
+                    HeightRequest="1"
+                    BackgroundColor="Gray" />
 
-                <Label Text="Door Control"
-                       FontSize="17"
-                       FontAttributes="Bold" />
+                <!-- Door Control -->
+                <Label
+                    Text="Door Control"
+                    FontSize="18"
+                    FontAttributes="Bold"
+                    TextColor="Black" />
 
-                <Grid ColumnDefinitions="*,*"
-                      RowDefinitions="Auto,Auto,Auto"
-                      ColumnSpacing="8"
-                      RowSpacing="8">
+                <Grid
+                    ColumnDefinitions="*,*"
+                    RowDefinitions="Auto,Auto,Auto"
+                    ColumnSpacing="8"
+                    RowSpacing="8">
 
-                    <Button Text="Door 1 - WH7"
-                            Grid.Row="0"
-                            Grid.Column="0"
-                            Clicked="Door1_Clicked" />
+                    <Button
+                        Text="Door 1 - WH7"
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        Clicked="Door1_Clicked" />
 
-                    <Button Text="Door 2 - WH9"
-                            Grid.Row="0"
-                            Grid.Column="1"
-                            Clicked="Door2_Clicked" />
+                    <Button
+                        Text="Door 2 - WH9"
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        Clicked="Door2_Clicked" />
 
-                    <!-- Door 3 disabled -->
-                    <Button Text="Door 3 - DISABLED"
-                            Grid.Row="1"
-                            Grid.Column="0"
-                            IsEnabled="False" />
+                    <Button
+                        Text="Door 3 - DISABLED"
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        IsEnabled="False" />
 
-                    <Button Text="Door 4 - WH4"
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Clicked="Door4_Clicked" />
+                    <Button
+                        Text="Door 4 - WH4"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Clicked="Door4_Clicked" />
 
-                    <Button Text="Door 5 - WH5"
-                            Grid.Row="2"
-                            Grid.Column="0"
-                            Clicked="Door5_Clicked" />
+                    <Button
+                        Text="Door 5 - WH5"
+                        Grid.Row="2"
+                        Grid.Column="0"
+                        Clicked="Door5_Clicked" />
 
                 </Grid>
 
-               
-                <Label x:Name="StatusLabel"
-                       Text="Ready"
-                       FontSize="13" />
+                <!-- Status -->
+                <Label
+                    Text="System Status"
+                    FontSize="17"
+                    FontAttributes="Bold"
+                    TextColor="Black" />
+
+                <Label
+                    x:Name="StatusLabel"
+                    Text="Ready"
+                    FontSize="13"
+                    TextColor="Black" />
 
             </VerticalStackLayout>
+
         </ScrollView>
 
     </Grid>
