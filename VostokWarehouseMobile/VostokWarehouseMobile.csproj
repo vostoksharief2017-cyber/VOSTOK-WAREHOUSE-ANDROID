@@ -30,7 +30,6 @@
 
   </PropertyGroup>
 
-
   <ItemGroup>
 
     <PackageReference
@@ -43,10 +42,9 @@
 
     <PackageReference
       Include="VideoLAN.LibVLC.Android"
-      Version="3.7.0-beta" />
+      Version="3.6.5" />
 
   </ItemGroup>
-
 
   <!-- Android permissions -->
 
