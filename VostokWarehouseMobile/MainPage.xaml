@@ -6,6 +6,7 @@
     xmlns:shared="clr-namespace:LibVLCSharp.MAUI;assembly=LibVLCSharp.MAUI"
     x:Class="VostokWarehouseMobile.MainPage"
     Title="VOSTOK-WAREHOUSE">
+<Grid x:Name="VideoContainer" />
 
     <Grid>
 
