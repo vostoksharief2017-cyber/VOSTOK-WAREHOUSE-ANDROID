@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0-android</TargetFramework>
     <OutputType>Exe</OutputType>
+
     <RootNamespace>VostokWarehouseMobile</RootNamespace>
 
     <ApplicationTitle>VOSTOK-WAREHOUSE</ApplicationTitle>
@@ -34,16 +35,12 @@
 
   </ItemGroup>
 
-  <!-- MAUI application images -->
   <ItemGroup>
-    <MauiImage Include="Resources\Images\*" />
-  </ItemGroup>
 
-<!-- Application Icon -->
-  <ItemGroup>
-    <MauiIcon Include="Resources\AppIcon\vostok.svg"
-              ForegroundFile="Resources\AppIcon\vostok.svg"
-              Color="#FFFFFF" />
+    <MauiImage Include="Resources\Images\*" />
+
+    <MauiIcon Include="Resources\AppIcon\vostok.svg" />
+
   </ItemGroup>
 
 </Project>
