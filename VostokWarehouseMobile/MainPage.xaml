@@ -10,6 +10,10 @@
         RowDefinitions="Auto,*,Auto"
         Padding="10">
 
+        <!-- ===================================================== -->
+        <!-- HEADER -->
+        <!-- ===================================================== -->
+
         <VerticalStackLayout
             Grid.Row="0"
             Spacing="8">
@@ -28,14 +32,21 @@
             <Label
                 x:Name="CameraStatus"
                 Text="Select a camera"
-                HorizontalOptions="Center" />
+                HorizontalOptions="Center"
+                FontSize="14" />
 
             <Label
                 x:Name="StatusLabel"
                 Text="Ready"
-                HorizontalOptions="Center" />
+                HorizontalOptions="Center"
+                FontSize="13" />
 
         </VerticalStackLayout>
+
+
+        <!-- ===================================================== -->
+        <!-- LIVE VIEW -->
+        <!-- ===================================================== -->
 
         <Border
             Grid.Row="1"
@@ -55,11 +66,17 @@
                     Text="Select a camera"
                     TextColor="White"
                     HorizontalOptions="Center"
-                    VerticalOptions="Center" />
+                    VerticalOptions="Center"
+                    FontSize="16" />
 
             </Grid>
 
         </Border>
+
+
+        <!-- ===================================================== -->
+        <!-- DOOR BUTTONS -->
+        <!-- ===================================================== -->
 
         <Grid
             Grid.Row="2"
