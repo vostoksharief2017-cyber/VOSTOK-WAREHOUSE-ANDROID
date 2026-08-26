@@ -59,22 +59,22 @@
 
             <Button
                 Grid.Column="0"
-                Text="Door 1"
+                Text="Door WH7"
                 Clicked="Door1_Clicked" />
 
             <Button
                 Grid.Column="1"
-                Text="Door 2"
+                Text="Door WH9"
                 Clicked="Door2_Clicked" />
 
             <Button
                 Grid.Column="2"
-                Text="Door 4"
+                Text="Door WH4"
                 Clicked="Door4_Clicked" />
 
             <Button
                 Grid.Column="3"
-                Text="Door 5"
+                Text="Door WH5"
                 Clicked="Door5_Clicked" />
 
         </Grid>
