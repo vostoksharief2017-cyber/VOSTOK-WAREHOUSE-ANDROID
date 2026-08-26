@@ -39,4 +39,11 @@
     <MauiImage Include="Resources\Images\*" />
   </ItemGroup>
 
+<!-- Application Icon -->
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\vostok.svg"
+              ForegroundFile="Resources\AppIcon\vostok.svg"
+              Color="#FFFFFF" />
+  </ItemGroup>
+
 </Project>
