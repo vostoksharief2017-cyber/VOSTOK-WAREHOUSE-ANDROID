@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using LibVLCSharp.Shared;
 
-
 namespace VostokWarehouseMobile;
 
 public partial class MainPage : ContentPage
@@ -22,7 +21,6 @@ public partial class MainPage : ContentPage
     private LibVLC? _libVLC;
     private MediaPlayer? _mediaPlayer;
     private Media? _currentMedia;
-    private VideoView? _videoView;
 
     // ============================================================
     // CAMERA LIST
@@ -56,41 +54,34 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
 
-        // Add camera names to Picker
-        foreach (string cameraName in cameras.Keys)
-        {
-            CameraPicker.Items.Add(cameraName);
-        }
-
-        CameraStatus.Text = "Select a camera";
-        StatusLabel.Text = "Starting...";
-
-        // Create LibVLC video control dynamically
         try
         {
-            _videoView = new VideoView
+            // Add cameras to picker
+            foreach (string cameraName in cameras.Keys)
             {
-                HorizontalOptions = LayoutOptions.Fill,
-                VerticalOptions = LayoutOptions.Fill
-            };
+                CameraPicker.Items.Add(cameraName);
+            }
 
-            VideoContainer.Children.Add(_videoView);
+            CameraStatus.Text = "Select a camera";
+            StatusLabel.Text = "Starting...";
+
+            // Initialize LibVLC after XAML has loaded
+            Loaded += MainPage_Loaded;
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = "Video control error";
+            CameraStatus.Text = "Initialization error";
             StatusLabel.Text = ex.Message;
         }
-
-        // Initialize LibVLC after page is loaded
-        Loaded += MainPage_Loaded;
     }
 
     // ============================================================
     // LIBVLC INITIALIZATION
     // ============================================================
 
-    private void MainPage_Loaded(object? sender, EventArgs e)
+    private void MainPage_Loaded(
+        object? sender,
+        EventArgs e)
     {
         try
         {
@@ -106,7 +97,7 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             CameraStatus.Text =
-                "LibVLC initialization failed";
+                "LibVLC initialization failed.";
 
             StatusLabel.Text =
                 ex.Message;
@@ -121,33 +112,44 @@ public partial class MainPage : ContentPage
         object? sender,
         EventArgs e)
     {
-        if (CameraPicker.SelectedItem is not string cameraName)
-            return;
+        try
+        {
+            if (CameraPicker.SelectedItem is not string cameraName)
+                return;
 
-        if (!cameras.TryGetValue(
+            if (!cameras.TryGetValue(
+                    cameraName,
+                    out string? ip))
+            {
+                CameraStatus.Text =
+                    "Camera IP not found.";
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    HikvisionPassword))
+            {
+                await DisplayAlertAsync(
+                    "Password Required",
+                    "Hikvision password is not configured.",
+                    "OK");
+
+                return;
+            }
+
+            await StartCameraAsync(
                 cameraName,
-                out string? ip))
+                ip);
+        }
+        catch (Exception ex)
         {
             CameraStatus.Text =
-                "Camera IP not found.";
+                "Camera selection error.";
 
-            return;
+            StatusLabel.Text =
+                ex.Message;
         }
-
-        if (string.IsNullOrWhiteSpace(
-                HikvisionPassword))
-        {
-            await DisplayAlertAsync(
-                "Password Required",
-                "Please configure the Hikvision password.",
-                "OK");
-
-            return;
-        }
-
-        await StartCameraAsync(
-            cameraName,
-            ip);
     }
 
     // ============================================================
@@ -168,25 +170,20 @@ public partial class MainPage : ContentPage
                 return;
             }
 
-            if (_videoView == null)
-            {
-                CameraStatus.Text =
-                    "Video control is not initialized.";
-
-                return;
-            }
-
+            // Stop previous camera
             StopCamera();
 
-            // Encode password for RTSP URL
+            // Encode password safely
             string encodedPassword =
                 Uri.EscapeDataString(
                     HikvisionPassword);
 
-            // Hikvision Main Stream
+            // Hikvision RTSP Main Stream
             string rtspUrl =
-                $"rtsp://{HikvisionUserName}:{encodedPassword}" +
-                $"@{ip}:554/Streaming/Channels/101";
+                $"rtsp://{HikvisionUserName}:" +
+                $"{encodedPassword}@" +
+                $"{ip}:554/" +
+                "Streaming/Channels/101";
 
             CameraStatus.Text =
                 $"Connecting to {cameraName}...";
@@ -198,27 +195,25 @@ public partial class MainPage : ContentPage
             _mediaPlayer =
                 new MediaPlayer(_libVLC);
 
-            // Attach MediaPlayer to VideoView
-            _videoView.MediaPlayer =
+            // Attach MediaPlayer to XAML VideoView
+            VideoView.MediaPlayer =
                 _mediaPlayer;
 
-            // Dispose previous media
-            _currentMedia?.Dispose();
-
-            // Create new Media
+            // Create Media
             _currentMedia =
                 new Media(
                     _libVLC,
                     new Uri(rtspUrl));
 
-            // RTSP settings
-            _currentMedia.AddOption(
-                ":network-caching=1000");
-
+            // RTSP TCP
             _currentMedia.AddOption(
                 ":rtsp-tcp");
 
-            // Start stream
+            // Network cache
+            _currentMedia.AddOption(
+                ":network-caching=1000");
+
+            // Start playback
             bool started =
                 _mediaPlayer.Play(
                     _currentMedia);
@@ -243,11 +238,13 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             CameraStatus.Text =
-                $"Camera error: {ex.Message}";
+                "Camera error";
 
             StatusLabel.Text =
-                "Camera Error";
+                ex.Message;
         }
+
+        await Task.CompletedTask;
     }
 
     // ============================================================
@@ -258,13 +255,13 @@ public partial class MainPage : ContentPage
     {
         try
         {
-            // Detach MediaPlayer from VideoView
-            if (_videoView != null)
+            // Detach player from VideoView
+            if (VideoView != null)
             {
-                _videoView.MediaPlayer = null;
+                VideoView.MediaPlayer = null;
             }
 
-            // Stop and dispose MediaPlayer
+            // Stop MediaPlayer
             if (_mediaPlayer != null)
             {
                 if (_mediaPlayer.IsPlaying)
@@ -350,7 +347,7 @@ public partial class MainPage : ContentPage
         {
             await DisplayAlertAsync(
                 "Password Required",
-                "Please configure the Hikvision password.",
+                "Hikvision password is not configured.",
                 "OK");
 
             return;
@@ -359,8 +356,7 @@ public partial class MainPage : ContentPage
         try
         {
             string url =
-                $"http://{ip}" +
-                "/ISAPI/AccessControl/" +
+                $"http://{ip}/ISAPI/AccessControl/" +
                 "RemoteControl/door/1";
 
             string xml =
@@ -378,7 +374,7 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // FIRST REQUEST
-            // Get Digest challenge
+            // Get Hikvision Digest challenge
             // ====================================================
 
             using HttpRequestMessage firstRequest =
@@ -397,7 +393,7 @@ public partial class MainPage : ContentPage
                     firstRequest);
 
             // ====================================================
-            // IF DEVICE ACCEPTS WITHOUT DIGEST
+            // DEVICE ACCEPTED WITHOUT AUTH
             // ====================================================
 
             if (firstResponse.IsSuccessStatusCode)
@@ -411,7 +407,7 @@ public partial class MainPage : ContentPage
             }
 
             // ====================================================
-            // CHECK UNAUTHORIZED
+            // EXPECT 401
             // ====================================================
 
             if (firstResponse.StatusCode !=
@@ -419,8 +415,8 @@ public partial class MainPage : ContentPage
             {
                 await DisplayAlertAsync(
                     "Door Control",
-                    $"Command failed. HTTP " +
-                    $"{(int)firstResponse.StatusCode}",
+                    $"Command failed.\n\n" +
+                    $"HTTP {(int)firstResponse.StatusCode}",
                     "OK");
 
                 return;
@@ -474,7 +470,7 @@ public partial class MainPage : ContentPage
                 out string? qop);
 
             // ====================================================
-            // CNONCE / NONCE COUNT
+            // DIGEST VALUES
             // ====================================================
 
             string cnonce =
@@ -485,6 +481,7 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // HA1
+            // MD5(username:realm:password)
             // ====================================================
 
             string ha1 =
@@ -495,11 +492,15 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // HA2
+            // MD5(method:uri)
             // ====================================================
+
+            string uri =
+                new Uri(url).AbsolutePath;
 
             string ha2 =
                 Md5Hash(
-                    $"PUT:{new Uri(url).AbsolutePath}");
+                    $"PUT:{uri}");
 
             // ====================================================
             // RESPONSE HASH
@@ -541,7 +542,7 @@ public partial class MainPage : ContentPage
             }
 
             // ====================================================
-            // BUILD AUTHORIZATION
+            // BUILD AUTHORIZATION HEADER
             // ====================================================
 
             string authorization =
@@ -555,7 +556,8 @@ public partial class MainPage : ContentPage
                     url);
 
             // ====================================================
-            // SECOND AUTHENTICATED REQUEST
+            // SECOND REQUEST
+            // Authenticated door command
             // ====================================================
 
             using HttpRequestMessage secondRequest =
@@ -655,7 +657,7 @@ public partial class MainPage : ContentPage
     }
 
     // ============================================================
-    // DIGEST AUTHORIZATION
+    // DIGEST AUTHORIZATION HEADER
     // ============================================================
 
     private static string
@@ -716,20 +718,23 @@ public partial class MainPage : ContentPage
     }
 
     // ============================================================
-    // MD5
+    // MD5 HASH
     // ============================================================
 
     private static string Md5Hash(
         string input)
     {
         byte[] bytes =
-            Encoding.UTF8.GetBytes(input);
+            Encoding.UTF8.GetBytes(
+                input);
 
         byte[] hash =
-            MD5.HashData(bytes);
+            MD5.HashData(
+                bytes);
 
         return Convert.ToHexString(
-            hash).ToLowerInvariant();
+            hash)
+            .ToLowerInvariant();
     }
 
     // ============================================================
@@ -744,11 +749,12 @@ public partial class MainPage : ContentPage
                 byteCount);
 
         return Convert.ToHexString(
-            bytes).ToLowerInvariant();
+            bytes)
+            .ToLowerInvariant();
     }
 
     // ============================================================
-    // CLEANUP
+    // PAGE CLEANUP
     // ============================================================
 
     protected override void OnDisappearing()
@@ -757,24 +763,12 @@ public partial class MainPage : ContentPage
 
         try
         {
-            if (_videoView != null)
-            {
-                _videoView.MediaPlayer = null;
-                _videoView.Dispose();
-                _videoView = null;
-            }
-        }
-        catch
-        {
-        }
-
-        try
-        {
             _libVLC?.Dispose();
             _libVLC = null;
         }
         catch
         {
+            // Ignore cleanup errors
         }
 
         base.OnDisappearing();
