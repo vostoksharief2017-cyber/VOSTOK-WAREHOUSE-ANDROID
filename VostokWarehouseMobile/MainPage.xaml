@@ -2,6 +2,7 @@
 
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:shared="clr-namespace:LibVLCSharp.MAUI;assembly=LibVLCSharp.MAUI"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="VostokWarehouseMobile.MainPage">
 
@@ -38,6 +39,11 @@
         </VerticalStackLayout>
 
         <!-- LIVE VIEW CONTAINER -->
+<shared:VideoView
+    x:Name="VideoView"
+    HorizontalOptions="Fill"
+    VerticalOptions="Fill" />
+
         <Border
             Grid.Row="1"
             StrokeThickness="1"
