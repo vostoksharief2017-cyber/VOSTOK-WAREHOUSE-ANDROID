@@ -3,13 +3,12 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vlc="clr-namespace:LibVLCSharp.Maui;assembly=LibVLCSharp.MAUI"
     x:Class="VostokWarehouseMobile.MainPage">
 
     <Grid
         RowDefinitions="Auto,*,Auto"
         Padding="10">
-
-        <!-- HEADER -->
 
         <VerticalStackLayout
             Grid.Row="0"
@@ -38,21 +37,22 @@
 
         </VerticalStackLayout>
 
-
-        <!-- LIVE VIEW -->
-
         <Border
             Grid.Row="1"
             StrokeThickness="1"
             Margin="0,10">
 
             <Grid
-                x:Name="VideoContainer"
                 BackgroundColor="Black">
+
+                <vlc:VideoView
+                    x:Name="VideoView"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="Fill" />
 
                 <Label
                     x:Name="VideoStatus"
-                    Text="Starting Live View..."
+                    Text="Select a camera"
                     TextColor="White"
                     HorizontalOptions="Center"
                     VerticalOptions="Center" />
@@ -60,9 +60,6 @@
             </Grid>
 
         </Border>
-
-
-        <!-- DOORS -->
 
         <Grid
             Grid.Row="2"
