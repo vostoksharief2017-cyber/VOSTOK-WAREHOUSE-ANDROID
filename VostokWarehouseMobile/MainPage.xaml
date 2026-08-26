@@ -80,17 +80,7 @@
 
                 </Grid>
 
-                <Label Text="Hikvision Password"
-                       FontSize="17"
-                       FontAttributes="Bold" />
-
-                <Entry x:Name="PasswordEntry"
-                       Placeholder="Enter Hikvision password"
-                       IsPassword="True" />
-
-                <Button Text="Save Password"
-                        Clicked="SavePassword_Clicked" />
-
+               
                 <Label x:Name="StatusLabel"
                        Text="Ready"
                        FontSize="13" />
