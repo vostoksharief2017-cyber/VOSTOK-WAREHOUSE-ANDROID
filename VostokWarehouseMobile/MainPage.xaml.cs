@@ -7,25 +7,12 @@ namespace VostokWarehouseMobile;
 
 public partial class MainPage : ContentPage
 {
-    // ============================================================
-    // HIKVISION SETTINGS
-    // ============================================================
-
     private const string HikvisionUserName = "admin";
-
-    // Hikvision password
     private const string HikvisionPassword = "Vos@3558817";
-
-    // ============================================================
-    // LIBVLC
-    // ============================================================
 
     private LibVLC? _libVLC;
     private MediaPlayer? _mediaPlayer;
-
-    // ============================================================
-    // CAMERA LIST
-    // ============================================================
+    private Media? _currentMedia;
 
     private readonly Dictionary<string, string> cameras = new()
     {
@@ -35,10 +22,6 @@ public partial class MainPage : ContentPage
         ["WareHouse-5"] = "192.168.5.132"
     };
 
-    // ============================================================
-    // DOOR LIST
-    // ============================================================
-
     private readonly Dictionary<string, string> doors = new()
     {
         ["Door 1 - WH7"] = "192.168.5.131",
@@ -47,38 +30,37 @@ public partial class MainPage : ContentPage
         ["Door 5 - WH5"] = "192.168.5.132"
     };
 
-    // ============================================================
-    // CONSTRUCTOR
-    // ============================================================
-
     public MainPage()
     {
         InitializeComponent();
 
+        foreach (string cameraName in cameras.Keys)
+        {
+            CameraPicker.Items.Add(cameraName);
+        }
+
+        CameraStatus.Text = "Select a camera";
+        StatusLabel.Text = "Starting...";
+
+        Loaded += MainPage_Loaded;
+    }
+
+    private void MainPage_Loaded(object? sender, EventArgs e)
+    {
         try
         {
             Core.Initialize();
 
             _libVLC = new LibVLC();
 
-            foreach (string cameraName in cameras.Keys)
-            {
-                CameraPicker.Items.Add(cameraName);
-            }
-
-            CameraStatus.Text = "Select a camera";
             StatusLabel.Text = "Ready";
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = "LibVLC initialization failed.";
+            CameraStatus.Text = "LibVLC initialization failed";
             StatusLabel.Text = ex.Message;
         }
     }
-
-    // ============================================================
-    // CAMERA SELECTION
-    // ============================================================
 
     private async void CameraPicker_SelectedIndexChanged(
         object? sender,
@@ -90,13 +72,11 @@ public partial class MainPage : ContentPage
         if (!cameras.TryGetValue(cameraName, out string? ip))
             return;
 
-        // Only check whether password is actually empty.
-        // Vos@3558817 is a valid configured password.
         if (string.IsNullOrWhiteSpace(HikvisionPassword))
         {
             await DisplayAlertAsync(
                 "Password Required",
-                "Please enter your Hikvision password in MainPage.xaml.cs.",
+                "Please configure the Hikvision password.",
                 "OK");
 
             return;
@@ -104,10 +84,6 @@ public partial class MainPage : ContentPage
 
         await StartCameraAsync(cameraName, ip);
     }
-
-    // ============================================================
-    // START LIVE VIEW
-    // ============================================================
 
     private async Task StartCameraAsync(
         string cameraName,
@@ -135,19 +111,16 @@ public partial class MainPage : ContentPage
 
             _mediaPlayer = new MediaPlayer(_libVLC);
 
-            // IMPORTANT:
-            // VideoView is the LibVLC video control.
-            // VideoContainer is only a Grid and does NOT have MediaPlayer.
             VideoView.MediaPlayer = _mediaPlayer;
 
-            using Media media =
+            _currentMedia =
                 new Media(_libVLC, new Uri(rtspUrl));
 
-            media.AddOption(":network-caching=1000");
-            media.AddOption(":rtsp-tcp");
+            _currentMedia.AddOption(":network-caching=1000");
+            _currentMedia.AddOption(":rtsp-tcp");
 
             bool started =
-                _mediaPlayer.Play(media);
+                _mediaPlayer.Play(_currentMedia);
 
             if (started)
             {
@@ -176,15 +149,10 @@ public partial class MainPage : ContentPage
         }
     }
 
-    // ============================================================
-    // STOP CAMERA
-    // ============================================================
-
     private void StopCamera()
     {
         try
         {
-            // First detach MediaPlayer from VideoView.
             if (VideoView != null)
             {
                 VideoView.MediaPlayer = null;
@@ -196,16 +164,17 @@ public partial class MainPage : ContentPage
                 _mediaPlayer.Dispose();
                 _mediaPlayer = null;
             }
+
+            if (_currentMedia != null)
+            {
+                _currentMedia.Dispose();
+                _currentMedia = null;
+            }
         }
         catch
         {
-            // Ignore cleanup errors
         }
     }
-
-    // ============================================================
-    // DOOR BUTTONS
-    // ============================================================
 
     private async void Door1_Clicked(
         object sender,
@@ -235,16 +204,9 @@ public partial class MainPage : ContentPage
         await OpenDoorAsync("Door 5 - WH5");
     }
 
-    // ============================================================
-    // HIKVISION DOOR OPEN
-    // DIGEST AUTHENTICATION
-    // ============================================================
-
     private async Task OpenDoorAsync(string doorName)
     {
-        if (!doors.TryGetValue(
-                doorName,
-                out string? ip))
+        if (!doors.TryGetValue(doorName, out string? ip))
         {
             await DisplayAlertAsync(
                 "Door Control",
@@ -254,12 +216,11 @@ public partial class MainPage : ContentPage
             return;
         }
 
-        // Only reject an empty password.
         if (string.IsNullOrWhiteSpace(HikvisionPassword))
         {
             await DisplayAlertAsync(
                 "Password Required",
-                "Please configure the Hikvision password in MainPage.xaml.cs.",
+                "Please configure the Hikvision password.",
                 "OK");
 
             return;
@@ -276,184 +237,35 @@ public partial class MainPage : ContentPage
                 "<cmd>open</cmd>" +
                 "</RemoteControlDoor>";
 
-            using HttpClient client =
-                new HttpClient
-                {
-                    Timeout = TimeSpan.FromSeconds(10)
-                };
+            using HttpClient client = new()
+            {
+                Timeout = TimeSpan.FromSeconds(10)
+            };
 
-            // ----------------------------------------------------
-            // FIRST REQUEST
-            // Get Digest authentication challenge
-            // ----------------------------------------------------
+            using HttpRequestMessage request =
+                new(HttpMethod.Put, url);
 
-            using HttpRequestMessage firstRequest =
-                new HttpRequestMessage(
-                    HttpMethod.Put,
-                    url);
-
-            firstRequest.Content =
+            request.Content =
                 new StringContent(
                     xml,
                     Encoding.UTF8,
                     "application/xml");
 
-            using HttpResponseMessage firstResponse =
-                await client.SendAsync(firstRequest);
+            using HttpResponseMessage response =
+                await client.SendAsync(request);
 
-            if (firstResponse.IsSuccessStatusCode)
-            {
-                await DisplayAlertAsync(
-                    "Door Control",
-                    $"{doorName} opened successfully.",
-                    "OK");
-
-                return;
-            }
-
-            if (firstResponse.StatusCode !=
+            if (response.StatusCode ==
                 HttpStatusCode.Unauthorized)
             {
                 await DisplayAlertAsync(
                     "Door Control",
-                    $"Command failed. HTTP {(int)firstResponse.StatusCode}",
+                    "Hikvision Digest authentication is required.",
                     "OK");
 
                 return;
             }
 
-            // ----------------------------------------------------
-            // GET DIGEST CHALLENGE
-            // ----------------------------------------------------
-
-            string? authenticate =
-                firstResponse.Headers.WwwAuthenticate
-                    .FirstOrDefault(
-                        x => x.Scheme.Equals(
-                            "Digest",
-                            StringComparison.OrdinalIgnoreCase))
-                    ?.Parameter;
-
-            if (string.IsNullOrWhiteSpace(authenticate))
-            {
-                await DisplayAlertAsync(
-                    "Authentication Error",
-                    "Hikvision did not provide a Digest authentication challenge.",
-                    "OK");
-
-                return;
-            }
-
-            Dictionary<string, string> digest =
-                ParseDigestChallenge(authenticate);
-
-            if (!digest.TryGetValue(
-                    "realm",
-                    out string? realm) ||
-                !digest.TryGetValue(
-                    "nonce",
-                    out string? nonce))
-            {
-                await DisplayAlertAsync(
-                    "Authentication Error",
-                    "Invalid Hikvision Digest challenge.",
-                    "OK");
-
-                return;
-            }
-
-            digest.TryGetValue(
-                "qop",
-                out string? qop);
-
-            string cnonce =
-                CreateRandomHex(16);
-
-            string nc =
-                "00000001";
-
-            // ----------------------------------------------------
-            // HA1
-            // ----------------------------------------------------
-
-            string ha1 =
-                Md5Hash(
-                    $"{HikvisionUserName}:{realm}:{HikvisionPassword}");
-
-            // ----------------------------------------------------
-            // HA2
-            // ----------------------------------------------------
-
-            string ha2 =
-                Md5Hash(
-                    $"PUT:{new Uri(url).AbsolutePath}");
-
-            // ----------------------------------------------------
-            // RESPONSE HASH
-            // ----------------------------------------------------
-
-            string responseHash;
-
-            if (!string.IsNullOrWhiteSpace(qop))
-            {
-                string selectedQop =
-                    qop.Split(',')
-                       .Select(x => x.Trim())
-                       .FirstOrDefault(
-                           x => x.Equals(
-                               "auth",
-                               StringComparison.OrdinalIgnoreCase))
-                    ?? "auth";
-
-                responseHash =
-                    Md5Hash(
-                        $"{ha1}:{nonce}:{nc}:{cnonce}:{selectedQop}:{ha2}");
-            }
-            else
-            {
-                responseHash =
-                    Md5Hash(
-                        $"{ha1}:{nonce}:{ha2}");
-            }
-
-            // ----------------------------------------------------
-            // BUILD AUTHORIZATION HEADER
-            // ----------------------------------------------------
-
-            string authorization =
-                BuildDigestAuthorization(
-                    realm,
-                    nonce,
-                    qop,
-                    responseHash,
-                    cnonce,
-                    nc,
-                    url);
-
-            // ----------------------------------------------------
-            // SECOND REQUEST
-            // Send authenticated door command
-            // ----------------------------------------------------
-
-            using HttpRequestMessage secondRequest =
-                new HttpRequestMessage(
-                    HttpMethod.Put,
-                    url);
-
-            secondRequest.Headers.TryAddWithoutValidation(
-                "Authorization",
-                authorization);
-
-            secondRequest.Content =
-                new StringContent(
-                    xml,
-                    Encoding.UTF8,
-                    "application/xml");
-
-            using HttpResponseMessage secondResponse =
-                await client.SendAsync(secondRequest);
-
-            if (secondResponse.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
                 await DisplayAlertAsync(
                     "Door Control",
@@ -462,14 +274,12 @@ public partial class MainPage : ContentPage
             }
             else
             {
-                string responseBody =
-                    await secondResponse.Content.ReadAsStringAsync();
+                string body =
+                    await response.Content.ReadAsStringAsync();
 
                 await DisplayAlertAsync(
                     "Door Control",
-                    $"Command failed.\n\n" +
-                    $"HTTP {(int)secondResponse.StatusCode}\n\n" +
-                    responseBody,
+                    $"Command failed.\n\nHTTP {(int)response.StatusCode}\n\n{body}",
                     "OK");
             }
         }
@@ -482,140 +292,6 @@ public partial class MainPage : ContentPage
         }
     }
 
-    // ============================================================
-    // DIGEST CHALLENGE PARSER
-    // ============================================================
-
-    private static Dictionary<string, string>
-        ParseDigestChallenge(string header)
-    {
-        Dictionary<string, string> result =
-            new Dictionary<string, string>(
-                StringComparer.OrdinalIgnoreCase);
-
-        string[] parts =
-            header.Split(',');
-
-        foreach (string part in parts)
-        {
-            string item =
-                part.Trim();
-
-            int equals =
-                item.IndexOf('=');
-
-            if (equals <= 0)
-                continue;
-
-            string key =
-                item[..equals].Trim();
-
-            string value =
-                item[(equals + 1)..].Trim();
-
-            value =
-                value.Trim('"');
-
-            result[key] = value;
-        }
-
-        return result;
-    }
-
-    // ============================================================
-    // DIGEST AUTHORIZATION
-    // ============================================================
-
-    private static string BuildDigestAuthorization(
-        string realm,
-        string nonce,
-        string? qop,
-        string responseHash,
-        string cnonce,
-        string nc,
-        string url)
-    {
-        string uri =
-            new Uri(url).AbsolutePath;
-
-        StringBuilder header =
-            new StringBuilder();
-
-        header.Append("Digest ");
-
-        header.Append(
-            $"username=\"{HikvisionUserName}\", ");
-
-        header.Append(
-            $"realm=\"{realm}\", ");
-
-        header.Append(
-            $"nonce=\"{nonce}\", ");
-
-        header.Append(
-            $"uri=\"{uri}\", ");
-
-        header.Append(
-            $"response=\"{responseHash}\"");
-
-        if (!string.IsNullOrWhiteSpace(qop))
-        {
-            string selectedQop =
-                qop.Split(',')
-                   .Select(x => x.Trim())
-                   .FirstOrDefault(
-                       x => x.Equals(
-                           "auth",
-                           StringComparison.OrdinalIgnoreCase))
-                ?? "auth";
-
-            header.Append(
-                $", qop={selectedQop}");
-
-            header.Append(
-                $", nc={nc}");
-
-            header.Append(
-                $", cnonce=\"{cnonce}\"");
-        }
-
-        return header.ToString();
-    }
-
-    // ============================================================
-    // MD5
-    // ============================================================
-
-    private static string Md5Hash(string input)
-    {
-        byte[] bytes =
-            Encoding.UTF8.GetBytes(input);
-
-        byte[] hash =
-            MD5.HashData(bytes);
-
-        return Convert.ToHexString(
-            hash).ToLowerInvariant();
-    }
-
-    // ============================================================
-    // RANDOM CNONCE
-    // ============================================================
-
-    private static string CreateRandomHex(int byteCount)
-    {
-        byte[] bytes =
-            RandomNumberGenerator.GetBytes(
-                byteCount);
-
-        return Convert.ToHexString(
-            bytes).ToLowerInvariant();
-    }
-
-    // ============================================================
-    // CLEANUP
-    // ============================================================
-
     protected override void OnDisappearing()
     {
         StopCamera();
@@ -627,7 +303,6 @@ public partial class MainPage : ContentPage
         }
         catch
         {
-            // Ignore cleanup errors
         }
 
         base.OnDisappearing();
