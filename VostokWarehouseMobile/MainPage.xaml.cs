@@ -13,7 +13,7 @@ public partial class MainPage : ContentPage
 
     private const string HikvisionUserName = "admin";
 
-    // Put your Hikvision password here locally.
+    // Hikvision password
     private const string HikvisionPassword = "Vos@3558817";
 
     // ============================================================
@@ -90,8 +90,9 @@ public partial class MainPage : ContentPage
         if (!cameras.TryGetValue(cameraName, out string? ip))
             return;
 
-        if (string.IsNullOrWhiteSpace(HikvisionPassword) ||
-            HikvisionPassword == "Vos@3558817")
+        // Only check whether password is actually empty.
+        // Vos@3558817 is a valid configured password.
+        if (string.IsNullOrWhiteSpace(HikvisionPassword))
         {
             await DisplayAlertAsync(
                 "Password Required",
@@ -134,7 +135,10 @@ public partial class MainPage : ContentPage
 
             _mediaPlayer = new MediaPlayer(_libVLC);
 
-            VideoContainer.MediaPlayer = _mediaPlayer;
+            // IMPORTANT:
+            // VideoView is the LibVLC video control.
+            // VideoContainer is only a Grid and does NOT have MediaPlayer.
+            VideoView.MediaPlayer = _mediaPlayer;
 
             using Media media =
                 new Media(_libVLC, new Uri(rtspUrl));
@@ -142,23 +146,33 @@ public partial class MainPage : ContentPage
             media.AddOption(":network-caching=1000");
             media.AddOption(":rtsp-tcp");
 
-            bool started = _mediaPlayer.Play(media);
+            bool started =
+                _mediaPlayer.Play(media);
 
             if (started)
             {
                 CameraStatus.Text =
                     $"Live View: {cameraName}";
+
+                StatusLabel.Text =
+                    "Live View Connected";
             }
             else
             {
                 CameraStatus.Text =
                     "Unable to start camera stream.";
+
+                StatusLabel.Text =
+                    "Stream Failed";
             }
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
                 $"Camera error: {ex.Message}";
+
+            StatusLabel.Text =
+                "Camera Error";
         }
     }
 
@@ -170,16 +184,17 @@ public partial class MainPage : ContentPage
     {
         try
         {
+            // First detach MediaPlayer from VideoView.
+            if (VideoView != null)
+            {
+                VideoView.MediaPlayer = null;
+            }
+
             if (_mediaPlayer != null)
             {
                 _mediaPlayer.Stop();
                 _mediaPlayer.Dispose();
                 _mediaPlayer = null;
-            }
-
-            if (VideoContainer != null)
-            {
-                VideoContainer.MediaPlayer = null;
             }
         }
         catch
@@ -239,8 +254,8 @@ public partial class MainPage : ContentPage
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(HikvisionPassword) ||
-            HikvisionPassword == "Vos@3558817")
+        // Only reject an empty password.
+        if (string.IsNullOrWhiteSpace(HikvisionPassword))
         {
             await DisplayAlertAsync(
                 "Password Required",
@@ -267,8 +282,11 @@ public partial class MainPage : ContentPage
                     Timeout = TimeSpan.FromSeconds(10)
                 };
 
-            // First request intentionally receives
-            // the Digest challenge.
+            // ----------------------------------------------------
+            // FIRST REQUEST
+            // Get Digest authentication challenge
+            // ----------------------------------------------------
+
             using HttpRequestMessage firstRequest =
                 new HttpRequestMessage(
                     HttpMethod.Put,
@@ -304,6 +322,10 @@ public partial class MainPage : ContentPage
                 return;
             }
 
+            // ----------------------------------------------------
+            // GET DIGEST CHALLENGE
+            // ----------------------------------------------------
+
             string? authenticate =
                 firstResponse.Headers.WwwAuthenticate
                     .FirstOrDefault(
@@ -325,8 +347,12 @@ public partial class MainPage : ContentPage
             Dictionary<string, string> digest =
                 ParseDigestChallenge(authenticate);
 
-            if (!digest.TryGetValue("realm", out string? realm) ||
-                !digest.TryGetValue("nonce", out string? nonce))
+            if (!digest.TryGetValue(
+                    "realm",
+                    out string? realm) ||
+                !digest.TryGetValue(
+                    "nonce",
+                    out string? nonce))
             {
                 await DisplayAlertAsync(
                     "Authentication Error",
@@ -343,15 +369,28 @@ public partial class MainPage : ContentPage
             string cnonce =
                 CreateRandomHex(16);
 
-            string nc = "00000001";
+            string nc =
+                "00000001";
+
+            // ----------------------------------------------------
+            // HA1
+            // ----------------------------------------------------
 
             string ha1 =
                 Md5Hash(
                     $"{HikvisionUserName}:{realm}:{HikvisionPassword}");
 
+            // ----------------------------------------------------
+            // HA2
+            // ----------------------------------------------------
+
             string ha2 =
                 Md5Hash(
                     $"PUT:{new Uri(url).AbsolutePath}");
+
+            // ----------------------------------------------------
+            // RESPONSE HASH
+            // ----------------------------------------------------
 
             string responseHash;
 
@@ -377,6 +416,10 @@ public partial class MainPage : ContentPage
                         $"{ha1}:{nonce}:{ha2}");
             }
 
+            // ----------------------------------------------------
+            // BUILD AUTHORIZATION HEADER
+            // ----------------------------------------------------
+
             string authorization =
                 BuildDigestAuthorization(
                     realm,
@@ -386,6 +429,11 @@ public partial class MainPage : ContentPage
                     cnonce,
                     nc,
                     url);
+
+            // ----------------------------------------------------
+            // SECOND REQUEST
+            // Send authenticated door command
+            // ----------------------------------------------------
 
             using HttpRequestMessage secondRequest =
                 new HttpRequestMessage(
@@ -419,7 +467,9 @@ public partial class MainPage : ContentPage
 
                 await DisplayAlertAsync(
                     "Door Control",
-                    $"Command failed.\n\nHTTP {(int)secondResponse.StatusCode}\n\n{responseBody}",
+                    $"Command failed.\n\n" +
+                    $"HTTP {(int)secondResponse.StatusCode}\n\n" +
+                    responseBody,
                     "OK");
             }
         }
@@ -492,11 +542,21 @@ public partial class MainPage : ContentPage
             new StringBuilder();
 
         header.Append("Digest ");
-        header.Append($"username=\"{HikvisionUserName}\", ");
-        header.Append($"realm=\"{realm}\", ");
-        header.Append($"nonce=\"{nonce}\", ");
-        header.Append($"uri=\"{uri}\", ");
-        header.Append($"response=\"{responseHash}\"");
+
+        header.Append(
+            $"username=\"{HikvisionUserName}\", ");
+
+        header.Append(
+            $"realm=\"{realm}\", ");
+
+        header.Append(
+            $"nonce=\"{nonce}\", ");
+
+        header.Append(
+            $"uri=\"{uri}\", ");
+
+        header.Append(
+            $"response=\"{responseHash}\"");
 
         if (!string.IsNullOrWhiteSpace(qop))
         {
@@ -509,9 +569,14 @@ public partial class MainPage : ContentPage
                            StringComparison.OrdinalIgnoreCase))
                 ?? "auth";
 
-            header.Append($", qop={selectedQop}");
-            header.Append($", nc={nc}");
-            header.Append($", cnonce=\"{cnonce}\"");
+            header.Append(
+                $", qop={selectedQop}");
+
+            header.Append(
+                $", nc={nc}");
+
+            header.Append(
+                $", cnonce=\"{cnonce}\"");
         }
 
         return header.ToString();
