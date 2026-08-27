@@ -32,7 +32,20 @@
 
 
   <!-- ========================================================= -->
-  <!-- ANDROID MEDIA3 EXOPLAYER                                  -->
+  <!-- .NET MAUI -->
+  <!-- ========================================================= -->
+
+  <ItemGroup>
+
+    <PackageReference
+      Include="Microsoft.Maui.Controls"
+      Version="$(MauiVersion)" />
+
+  </ItemGroup>
+
+
+  <!-- ========================================================= -->
+  <!-- ANDROID MEDIA3 / EXOPLAYER -->
   <!-- ========================================================= -->
 
   <ItemGroup>
@@ -53,7 +66,7 @@
 
 
   <!-- ========================================================= -->
-  <!-- ANDROID PERMISSIONS                                       -->
+  <!-- ANDROID PERMISSIONS -->
   <!-- ========================================================= -->
 
   <ItemGroup>
@@ -68,6 +81,5 @@
       Include="android.permission.ACCESS_WIFI_STATE" />
 
   </ItemGroup>
-
 
 </Project>
