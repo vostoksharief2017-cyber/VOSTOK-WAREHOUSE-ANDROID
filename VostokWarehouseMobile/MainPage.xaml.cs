@@ -1,7 +1,16 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using LibVLCSharp.Shared;
+
+#if ANDROID
+using Android.Content;
+using Android.Views;
+using Android.Widget;
+using AndroidX.Media3.Common;
+using AndroidX.Media3.Exoplayer;
+using AndroidX.Media3.Exoplayer.Rtsp;
+using AndroidX.Media3.Ui;
+#endif
 
 namespace VostokWarehouseMobile;
 
@@ -12,16 +21,9 @@ public partial class MainPage : ContentPage
     // ============================================================
 
     private const string HikvisionUserName = "admin";
-    private const string HikvisionPassword = "Vos@3558817";
 
-
-    // ============================================================
-    // LIBVLC
-    // ============================================================
-
-    private LibVLC? _libVLC;
-    private MediaPlayer? _mediaPlayer;
-    private Media? _currentMedia;
+    private const string HikvisionPassword =
+        "Vos@3558817";
 
 
     // ============================================================
@@ -50,6 +52,21 @@ public partial class MainPage : ContentPage
     };
 
 
+#if ANDROID
+
+    // ============================================================
+    // MEDIA3 PLAYER
+    // ============================================================
+
+    private ExoPlayer? _player;
+
+    private PlayerView? _playerView;
+
+    private MediaItem? _mediaItem;
+
+#endif
+
+
     // ============================================================
     // CONSTRUCTOR
     // ============================================================
@@ -67,57 +84,25 @@ public partial class MainPage : ContentPage
                 CameraPicker.Items.Add(cameraName);
             }
 
-            CameraStatus.Text = "Select a camera";
-            StatusLabel.Text = "Ready";
-            VideoStatus.Text = "Select a camera";
-        }
-        catch (Exception ex)
-        {
-            CameraStatus.Text = "Startup error";
-            StatusLabel.Text = ex.Message;
-            VideoStatus.Text = "Application error";
-        }
-    }
+            CameraStatus.Text =
+                "Select a camera";
 
+            StatusLabel.Text =
+                "Ready";
 
-    // ============================================================
-    // INITIALIZE LIBVLC
-    // IMPORTANT:
-    // LibVLC is NOT initialized when application starts.
-    // It starts only when user selects a camera.
-    // ============================================================
-
-    private bool InitializeLibVLC()
-    {
-        try
-        {
-            if (_libVLC != null)
-                return true;
-
-            CameraStatus.Text = "Starting video engine...";
-            StatusLabel.Text = "Initializing LibVLC...";
-            VideoStatus.Text = "Starting...";
-
-            Core.Initialize();
-
-            _libVLC = new LibVLC();
-
-            StatusLabel.Text = "LibVLC ready";
-
-            return true;
+            VideoStatus.Text =
+                "Select a camera";
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
-                "LibVLC initialization failed";
+                "Startup error";
 
             StatusLabel.Text =
                 ex.Message;
 
             VideoStatus.Text =
-                "Live View unavailable";
-
-            return false;
+                "Application error";
         }
     }
 
@@ -132,8 +117,12 @@ public partial class MainPage : ContentPage
     {
         try
         {
-            if (CameraPicker.SelectedItem is not string cameraName)
+            if (CameraPicker.SelectedItem
+                is not string cameraName)
+            {
                 return;
+            }
+
 
             if (!cameras.TryGetValue(
                     cameraName,
@@ -145,6 +134,7 @@ public partial class MainPage : ContentPage
                 return;
             }
 
+
             await StartCameraAsync(
                 cameraName,
                 ip);
@@ -152,7 +142,7 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             CameraStatus.Text =
-                "Camera selection error";
+                "Camera error";
 
             StatusLabel.Text =
                 ex.Message;
@@ -168,14 +158,10 @@ public partial class MainPage : ContentPage
         string cameraName,
         string ip)
     {
+#if ANDROID
+
         try
         {
-            // Initialize LibVLC only now.
-            if (!InitializeLibVLC())
-                return;
-
-
-            // Stop previous stream.
             StopCamera();
 
 
@@ -186,126 +172,156 @@ public partial class MainPage : ContentPage
                 $"RTSP: {ip}";
 
             VideoStatus.Text =
-                "Connecting...";
+                "Starting video...";
+
+
+            // ====================================================
+            // CREATE ANDROID CONTEXT
+            // ====================================================
+
+            Context? context =
+                Android.App.Application.Context;
+
+            if (context == null)
+            {
+                VideoStatus.Text =
+                    "Android context unavailable.";
+
+                return;
+            }
+
+
+            // ====================================================
+            // CREATE EXOPLAYER
+            // ====================================================
+
+            _player =
+                new ExoPlayer.Builder(
+                    context)
+                .Build();
+
+
+            // ====================================================
+            // CREATE PLAYER VIEW
+            // ====================================================
+
+            _playerView =
+                new PlayerView(context);
+
+
+            _playerView.UseController = false;
+
+            _playerView.Player =
+                _player;
+
+
+            // ====================================================
+            // ADD PLAYER VIEW TO MAUI GRID
+            // ====================================================
+
+            VideoContainer.Children.Clear();
+
+            VideoContainer.Children.Add(
+                _playerView);
 
 
             // ====================================================
             // HIKVISION RTSP URL
             // ====================================================
 
-            string encodedUserName =
+            string user =
                 Uri.EscapeDataString(
                     HikvisionUserName);
 
-            string encodedPassword =
+            string password =
                 Uri.EscapeDataString(
                     HikvisionPassword);
 
 
             string rtspUrl =
-                $"rtsp://{encodedUserName}:{encodedPassword}" +
+                $"rtsp://{user}:{password}" +
                 $"@{ip}:554/Streaming/Channels/101";
 
 
             // ====================================================
-            // CREATE MEDIA PLAYER
+            // MEDIA ITEM
             // ====================================================
 
-            if (_libVLC == null)
-            {
-                VideoStatus.Text =
-                    "LibVLC unavailable.";
-
-                return;
-            }
-
-
-            _mediaPlayer =
-                new MediaPlayer(_libVLC);
+            _mediaItem =
+                MediaItem.FromUri(
+                    Android.Net.Uri.Parse(
+                        rtspUrl));
 
 
             // ====================================================
-            // CONNECT TO XAML VIDEOVIEW
+            // RTSP MEDIA SOURCE
             // ====================================================
 
-            VideoView.MediaPlayer =
-                _mediaPlayer;
+            RtspMediaSource.Factory rtspFactory =
+                new RtspMediaSource.Factory();
 
 
-            // ====================================================
-            // CREATE MEDIA
-            // ====================================================
-
-            _currentMedia =
-                new Media(
-                    _libVLC,
-                    new Uri(rtspUrl));
+            // Force RTSP over TCP.
+            rtspFactory.SetForceUseRtpTcp(true);
 
 
-            // ====================================================
-            // RTSP OPTIONS
-            // ====================================================
-
-            _currentMedia.AddOption(
-                ":network-caching=1000");
-
-            _currentMedia.AddOption(
-                ":live-caching=1000");
-
-            _currentMedia.AddOption(
-                ":rtsp-tcp");
-
-            _currentMedia.AddOption(
-                ":clock-jitter=0");
-
-            _currentMedia.AddOption(
-                ":clock-synchro=0");
+            MediaSource mediaSource =
+                rtspFactory.CreateMediaSource(
+                    _mediaItem);
 
 
             // ====================================================
-            // START PLAYBACK
+            // LOAD STREAM
             // ====================================================
 
-            bool started =
-                _mediaPlayer.Play(
-                    _currentMedia);
+            _player.SetMediaSource(
+                mediaSource);
 
 
-            if (started)
-            {
-                CameraStatus.Text =
-                    $"Live View: {cameraName}";
+            _player.Prepare();
 
-                StatusLabel.Text =
-                    $"Connected - {ip}";
 
-                VideoStatus.Text = "";
-            }
-            else
-            {
-                CameraStatus.Text =
-                    "Unable to start camera stream.";
+            _player.PlayWhenReady =
+                true;
 
-                StatusLabel.Text =
-                    "RTSP playback failed.";
 
-                VideoStatus.Text =
-                    "No video.";
-            }
+            CameraStatus.Text =
+                $"Live View: {cameraName}";
+
+            StatusLabel.Text =
+                $"Connecting - {ip}";
+
+            VideoStatus.Text = "";
+
+
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
-                $"Camera error: {ex.Message}";
+                $"RTSP Error";
 
             StatusLabel.Text =
-                "Camera connection failed.";
+                ex.Message;
 
             VideoStatus.Text =
-                "Live View failed.";
+                "Unable to play RTSP stream.";
         }
 
+#else
+
+        CameraStatus.Text =
+            "Android RTSP only.";
+
+        StatusLabel.Text =
+            "This application is configured for Android.";
+
+        VideoStatus.Text =
+            "Not supported on this platform.";
+
         await Task.CompletedTask;
+
+#endif
     }
 
 
@@ -315,11 +331,13 @@ public partial class MainPage : ContentPage
 
     private void StopCamera()
     {
+#if ANDROID
+
         try
         {
-            if (VideoView != null)
+            if (_player != null)
             {
-                VideoView.MediaPlayer = null;
+                _player.Stop();
             }
         }
         catch
@@ -329,9 +347,9 @@ public partial class MainPage : ContentPage
 
         try
         {
-            if (_mediaPlayer != null)
+            if (_player != null)
             {
-                _mediaPlayer.Stop();
+                _player.ClearMediaItems();
             }
         }
         catch
@@ -341,10 +359,9 @@ public partial class MainPage : ContentPage
 
         try
         {
-            if (_currentMedia != null)
+            if (_playerView != null)
             {
-                _currentMedia.Dispose();
-                _currentMedia = null;
+                _playerView.Player = null;
             }
         }
         catch
@@ -354,11 +371,51 @@ public partial class MainPage : ContentPage
 
         try
         {
-            if (_mediaPlayer != null)
+            if (_player != null)
             {
-                _mediaPlayer.Dispose();
-                _mediaPlayer = null;
+                _player.Release();
+                _player.Dispose();
+                _player = null;
             }
+        }
+        catch
+        {
+        }
+
+
+        try
+        {
+            if (_playerView != null)
+            {
+                _playerView.Dispose();
+                _playerView = null;
+            }
+        }
+        catch
+        {
+        }
+
+
+        _mediaItem = null;
+
+#endif
+
+        try
+        {
+            VideoContainer.Children.Clear();
+
+            Label label =
+                new Label
+                {
+                    Text = "Select a camera",
+                    TextColor = Colors.White,
+                    HorizontalOptions =
+                        LayoutOptions.Center,
+                    VerticalOptions =
+                        LayoutOptions.Center
+                };
+
+            VideoContainer.Children.Add(label);
         }
         catch
         {
@@ -442,11 +499,14 @@ public partial class MainPage : ContentPage
         try
         {
             string url =
-                $"http://{ip}/ISAPI/AccessControl/RemoteControl/door/1";
+                $"http://{ip}" +
+                "/ISAPI/AccessControl/" +
+                "RemoteControl/door/1";
 
 
             string xml =
-                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+                "<?xml version=\"1.0\" " +
+                "encoding=\"UTF-8\"?>" +
                 "<RemoteControlDoor>" +
                 "<cmd>open</cmd>" +
                 "</RemoteControlDoor>";
@@ -462,7 +522,6 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // FIRST REQUEST
-            // Get Digest challenge.
             // ====================================================
 
             using HttpRequestMessage firstRequest =
@@ -484,7 +543,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // DEVICE ACCEPTED
+            // SUCCESS
             // ====================================================
 
             if (firstResponse.IsSuccessStatusCode)
@@ -499,7 +558,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // CHECK 401
+            // EXPECT DIGEST 401
             // ====================================================
 
             if (firstResponse.StatusCode !=
@@ -523,9 +582,11 @@ public partial class MainPage : ContentPage
                 firstResponse.Headers
                     .WwwAuthenticate
                     .FirstOrDefault(
-                        x => x.Scheme.Equals(
-                            "Digest",
-                            StringComparison.OrdinalIgnoreCase))
+                        x =>
+                            x.Scheme.Equals(
+                                "Digest",
+                                StringComparison
+                                    .OrdinalIgnoreCase))
                     ?.Parameter;
 
 
@@ -567,10 +628,6 @@ public partial class MainPage : ContentPage
                 out string? qop);
 
 
-            // ====================================================
-            // CNONCE
-            // ====================================================
-
             string cnonce =
                 CreateRandomHex(16);
 
@@ -585,7 +642,9 @@ public partial class MainPage : ContentPage
 
             string ha1 =
                 Md5Hash(
-                    $"{HikvisionUserName}:{realm}:{HikvisionPassword}");
+                    $"{HikvisionUserName}:" +
+                    $"{realm}:" +
+                    $"{HikvisionPassword}");
 
 
             // ====================================================
@@ -593,7 +652,8 @@ public partial class MainPage : ContentPage
             // ====================================================
 
             string uri =
-                new Uri(url).AbsolutePath;
+                new Uri(url)
+                    .AbsolutePath;
 
 
             // ====================================================
@@ -605,14 +665,15 @@ public partial class MainPage : ContentPage
                     $"PUT:{uri}");
 
 
-            // ====================================================
-            // RESPONSE
-            // ====================================================
-
             string responseHash;
 
-            string? selectedQop = null;
+            string? selectedQop =
+                null;
 
+
+            // ====================================================
+            // RESPONSE HASH
+            // ====================================================
 
             if (!string.IsNullOrWhiteSpace(qop))
             {
@@ -621,21 +682,25 @@ public partial class MainPage : ContentPage
                        .Select(
                            x => x.Trim())
                        .FirstOrDefault(
-                           x => x.Equals(
-                               "auth",
-                               StringComparison.OrdinalIgnoreCase));
+                           x =>
+                               x.Equals(
+                                   "auth",
+                                   StringComparison
+                                       .OrdinalIgnoreCase));
 
 
                 if (string.IsNullOrWhiteSpace(
                         selectedQop))
                 {
-                    selectedQop = "auth";
+                    selectedQop =
+                        "auth";
                 }
 
 
                 responseHash =
                     Md5Hash(
-                        $"{ha1}:{nonce}:{nc}:{cnonce}:{selectedQop}:{ha2}");
+                        $"{ha1}:{nonce}:{nc}:" +
+                        $"{cnonce}:{selectedQop}:{ha2}");
             }
             else
             {
@@ -709,8 +774,8 @@ public partial class MainPage : ContentPage
                 await DisplayAlertAsync(
                     "Door Control",
                     $"Command failed.\n\n" +
-                    $"HTTP {(int)secondResponse.StatusCode}\n\n" +
-                    responseBody,
+                    $"HTTP {(int)secondResponse.StatusCode}" +
+                    $"\n\n{responseBody}",
                     "OK");
             }
         }
@@ -718,7 +783,8 @@ public partial class MainPage : ContentPage
         {
             await DisplayAlertAsync(
                 "Door Control",
-                $"Unable to open {doorName}.\n\n{ex.Message}",
+                $"Unable to open {doorName}." +
+                $"\n\n{ex.Message}",
                 "OK");
         }
     }
@@ -877,21 +943,12 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // PAGE DISAPPEARING
+    // CLEANUP
     // ============================================================
 
     protected override void OnDisappearing()
     {
         StopCamera();
-
-        try
-        {
-            _libVLC?.Dispose();
-            _libVLC = null;
-        }
-        catch
-        {
-        }
 
         base.OnDisappearing();
     }
