@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-
     <TargetFramework>net10.0-android</TargetFramework>
 
     <OutputType>Exe</OutputType>
@@ -9,31 +8,21 @@
     <RootNamespace>VostokWarehouseMobile</RootNamespace>
 
     <ApplicationTitle>VOSTOK-WAREHOUSE</ApplicationTitle>
-
     <ApplicationId>com.vostok.warehouse</ApplicationId>
 
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-
     <ApplicationVersion>1</ApplicationVersion>
 
     <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
 
     <Nullable>enable</Nullable>
-
     <ImplicitUsings>enable</ImplicitUsings>
 
     <UseMaui>true</UseMaui>
-
     <SingleProject>true</SingleProject>
 
     <MauiVersion>10.0.31</MauiVersion>
-
   </PropertyGroup>
-
-
-  <!-- ========================================================= -->
-  <!-- .NET MAUI -->
-  <!-- ========================================================= -->
 
   <ItemGroup>
 
@@ -42,32 +31,6 @@
       Version="$(MauiVersion)" />
 
   </ItemGroup>
-
-
-  <!-- ========================================================= -->
-  <!-- ANDROID MEDIA3 / EXOPLAYER -->
-  <!-- ========================================================= -->
-
-  <ItemGroup>
-
-    <PackageReference
-      Include="Xamarin.AndroidX.Media3.ExoPlayer"
-      Version="1.10.1.1" />
-
-    <PackageReference
-      Include="Xamarin.AndroidX.Media3.ExoPlayer.Rtsp"
-      Version="1.10.1.1" />
-
-    <PackageReference
-      Include="Xamarin.AndroidX.Media3.Ui"
-      Version="1.10.1.1" />
-
-  </ItemGroup>
-
-
-  <!-- ========================================================= -->
-  <!-- ANDROID PERMISSIONS -->
-  <!-- ========================================================= -->
 
   <ItemGroup>
 
