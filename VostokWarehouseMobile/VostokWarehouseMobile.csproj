@@ -26,14 +26,11 @@
 
     <SingleProject>true</SingleProject>
 
+    <!-- MediaElement 10.0.0 requires MAUI 10.0.60 or newer -->
     <MauiVersion>10.0.60</MauiVersion>
 
   </PropertyGroup>
 
-
-  <!-- ========================================================= -->
-  <!-- MAUI + MEDIA ELEMENT -->
-  <!-- ========================================================= -->
 
   <ItemGroup>
 
@@ -41,6 +38,7 @@
       Include="Microsoft.Maui.Controls"
       Version="$(MauiVersion)" />
 
+    <!-- CommunityToolkit MediaElement -->
     <PackageReference
       Include="CommunityToolkit.Maui.MediaElement"
       Version="10.0.0" />
@@ -48,9 +46,7 @@
   </ItemGroup>
 
 
-  <!-- ========================================================= -->
-  <!-- ANDROID PERMISSIONS -->
-  <!-- ========================================================= -->
+  <!-- Android permissions -->
 
   <ItemGroup>
 
@@ -64,5 +60,6 @@
       Include="android.permission.ACCESS_WIFI_STATE" />
 
   </ItemGroup>
+
 
 </Project>
