@@ -3,6 +3,7 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     x:Class="VostokWarehouseMobile.MainPage">
 
     <Grid
@@ -10,7 +11,11 @@
         Padding="10"
         RowSpacing="10">
 
+
+        <!-- ================================================= -->
         <!-- HEADER -->
+        <!-- ================================================= -->
+
         <VerticalStackLayout
             Grid.Row="0"
             Spacing="8">
@@ -39,22 +44,33 @@
         </VerticalStackLayout>
 
 
-        <!-- LIVE VIEW AREA -->
+        <!-- ================================================= -->
+        <!-- RTSP LIVE VIEW -->
+        <!-- ================================================= -->
+
         <Border
             Grid.Row="1"
             StrokeThickness="1"
-            Padding="0"
-            Margin="0,5">
+            Margin="0,5"
+            BackgroundColor="Black">
 
             <Grid
-                x:Name="LiveViewContainer"
                 BackgroundColor="Black">
+
+                <toolkit:MediaElement
+                    x:Name="RtspPlayer"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="Fill"
+                    ShouldAutoPlay="False"
+                    ShouldShowPlaybackControls="False"
+                    Aspect="AspectFit" />
 
                 <Label
                     x:Name="LiveViewMessage"
-                    Text="RTSP LIVE VIEW&#10;&#10;Select a camera"
+                    Text="SELECT A CAMERA"
                     TextColor="White"
                     FontSize="18"
+                    FontAttributes="Bold"
                     HorizontalOptions="Center"
                     VerticalOptions="Center"
                     HorizontalTextAlignment="Center" />
@@ -64,7 +80,10 @@
         </Border>
 
 
+        <!-- ================================================= -->
         <!-- DOOR BUTTONS -->
+        <!-- ================================================= -->
+
         <Grid
             Grid.Row="2"
             ColumnDefinitions="*,*,*,*"
