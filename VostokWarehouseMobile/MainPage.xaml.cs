@@ -3,10 +3,8 @@ using System.Text;
 
 #if ANDROID
 using Android.Views;
-using Android.Widget;
 using AndroidX.Media3.Common;
 using AndroidX.Media3.ExoPlayer;
-using AndroidX.Media3.ExoPlayer.Rtsp;
 #endif
 
 namespace VostokWarehouseMobile;
@@ -14,7 +12,7 @@ namespace VostokWarehouseMobile;
 public partial class MainPage : ContentPage
 {
     // ============================================================
-    // HIKVISION
+    // HIKVISION CAMERA
     // ============================================================
 
     private const string HikvisionIp = "192.168.5.131";
@@ -26,6 +24,10 @@ public partial class MainPage : ContentPage
     private const string HikvisionRtsp =
         "rtsp://admin:Vos@3558817@192.168.5.131:554/Streaming/Channels/102";
 
+
+    // ============================================================
+    // CAMERA LIST
+    // ============================================================
 
     private readonly Dictionary<string, string> Cameras =
         new()
@@ -39,9 +41,9 @@ public partial class MainPage : ContentPage
 
 #if ANDROID
 
-    // IMPORTANT:
-    // Use the .NET binding interface instead of the Java
-    // ExoPlayer class name.
+    // ============================================================
+    // MEDIA3 PLAYER
+    // ============================================================
 
     private IExoPlayer? _player;
 
@@ -58,9 +60,9 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
 
-        foreach (string camera in Cameras.Keys)
+        foreach (string cameraName in Cameras.Keys)
         {
-            CameraPicker.Items.Add(camera);
+            CameraPicker.Items.Add(cameraName);
         }
 
         if (CameraPicker.Items.Count > 0)
@@ -73,7 +75,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // APPEARING
+    // PAGE APPEARING
     // ============================================================
 
     protected override async void OnAppearing()
@@ -113,7 +115,7 @@ public partial class MainPage : ContentPage
 #if ANDROID
 
     // ============================================================
-    // CREATE SURFACE
+    // CREATE VIDEO SURFACE
     // ============================================================
 
     private void CreateVideoSurface()
@@ -180,6 +182,10 @@ public partial class MainPage : ContentPage
     }
 
 
+    // ============================================================
+    // HANDLER CHANGED
+    // ============================================================
+
     private void VideoContainer_HandlerChanged(
         object? sender,
         EventArgs e)
@@ -187,8 +193,10 @@ public partial class MainPage : ContentPage
         VideoContainer.HandlerChanged -=
             VideoContainer_HandlerChanged;
 
-        MainThread.BeginInvokeOnMainThread(
-            AddSurfaceToPage);
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            AddSurfaceToPage();
+        });
     }
 
 
@@ -212,7 +220,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // MEDIA3 PLAYER
+            // CREATE EXOPLAYER
             // ====================================================
 
             var context =
@@ -224,7 +232,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // CONNECT SURFACE
+            // SET VIDEO SURFACE
             // ====================================================
 
             if (_surfaceView != null)
@@ -235,7 +243,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // RTSP URI
+            // HIKVISION RTSP URL
             // ====================================================
 
             var uri =
@@ -252,27 +260,11 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // RTSP MEDIA SOURCE
-            // ====================================================
-            //
-            // IMPORTANT:
-            // The Microsoft binding does not expose the Java
-            // RtspMediaSource.Factory exactly as shown in the
-            // Android Java documentation.
-            //
-            // Therefore we configure RTSP through the
-            // ExoPlayerBuilder media-source factory.
+            // SET MEDIA ITEM
             // ====================================================
 
-            
-
-
-            // ====================================================
-            // SET SOURCE
-            // ====================================================
-
-            _player.SetMediaSource(
-                mediaSource);
+            _player.SetMediaItem(
+                mediaItem);
 
 
             // ====================================================
@@ -289,12 +281,10 @@ public partial class MainPage : ContentPage
             // PLAY
             // ====================================================
 
-            _player.PlayWhenReady =
-                true;
-
+            _player.PlayWhenReady = true;
 
             StatusLabel.Text =
-                "RTSP connected - waiting for video...";
+                "RTSP buffering...";
         }
         catch (Exception ex)
         {
@@ -307,7 +297,7 @@ public partial class MainPage : ContentPage
             MainThread.BeginInvokeOnMainThread(
                 async () =>
                 {
-                    await DisplayAlert(
+                    await DisplayAlertAsync(
                         "RTSP Error",
                         ex.Message,
                         "OK");
@@ -365,15 +355,17 @@ public partial class MainPage : ContentPage
 
 #if ANDROID
 
-        MainThread.BeginInvokeOnMainThread(
-            StartRtsp);
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            StartRtsp();
+        });
 
 #endif
     }
 
 
     // ============================================================
-    // DISAPPEARING
+    // PAGE DISAPPEARING
     // ============================================================
 
     protected override void OnDisappearing()
@@ -449,9 +441,17 @@ public partial class MainPage : ContentPage
                 $"Opening Door {doorNumber}...";
 
 
+            // ====================================================
+            // HIKVISION ISAPI URL
+            // ====================================================
+
             string url =
                 $"http://{HikvisionIp}/ISAPI/AccessControl/RemoteControl/door/{doorNumber}";
 
+
+            // ====================================================
+            // XML COMMAND
+            // ====================================================
 
             string xml =
                 @"<?xml version=""1.0"" encoding=""UTF-8""?>
@@ -459,6 +459,10 @@ public partial class MainPage : ContentPage
     <cmd>open</cmd>
 </RemoteControlDoor>";
 
+
+            // ====================================================
+            // HIKVISION AUTHENTICATION
+            // ====================================================
 
             using var handler =
                 new HttpClientHandler
@@ -475,9 +479,14 @@ public partial class MainPage : ContentPage
             using var client =
                 new HttpClient(handler);
 
+
             client.Timeout =
                 TimeSpan.FromSeconds(5);
 
+
+            // ====================================================
+            // REQUEST CONTENT
+            // ====================================================
 
             using var content =
                 new StringContent(
@@ -486,18 +495,26 @@ public partial class MainPage : ContentPage
                     "application/xml");
 
 
+            // ====================================================
+            // SEND REQUEST
+            // ====================================================
+
             HttpResponseMessage response =
                 await client.PutAsync(
                     url,
                     content);
 
 
+            // ====================================================
+            // SUCCESS
+            // ====================================================
+
             if (response.IsSuccessStatusCode)
             {
                 StatusLabel.Text =
                     $"Door {doorNumber} Opened";
 
-                await DisplayAlert(
+                await DisplayAlertAsync(
                     "Door",
                     $"Door {doorNumber} opened successfully.",
                     "OK");
@@ -511,7 +528,7 @@ public partial class MainPage : ContentPage
                 StatusLabel.Text =
                     $"Door {doorNumber} failed";
 
-                await DisplayAlert(
+                await DisplayAlertAsync(
                     "Door Error",
                     $"HTTP {(int)response.StatusCode}\n{responseText}",
                     "OK");
@@ -522,7 +539,7 @@ public partial class MainPage : ContentPage
             StatusLabel.Text =
                 $"Door {doorNumber} error";
 
-            await DisplayAlert(
+            await DisplayAlertAsync(
                 "Door Error",
                 ex.Message,
                 "OK");
