@@ -119,7 +119,7 @@ public partial class MainPage : ContentPage
 
             string rtspUrl =
                 $"rtsp://{HikvisionUserName}:{encodedPassword}" +
-                $"@{ip}:554/Streaming/Channels/101";
+                $"@{ip}:554/Streaming/Channels/102";
 
 
             CameraStatus.Text =
