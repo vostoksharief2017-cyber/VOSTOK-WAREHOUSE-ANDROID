@@ -58,17 +58,11 @@ public partial class MainPage : ContentPage
 
             CameraStatus.Text = "Select a camera";
             StatusLabel.Text = "Ready";
-
-            LiveViewMessage.Text =
-                "SELECT A CAMERA";
         }
         catch (Exception ex)
         {
-            CameraStatus.Text =
-                "Initialization failed";
-
-            StatusLabel.Text =
-                ex.Message;
+            CameraStatus.Text = "Initialization error";
+            StatusLabel.Text = ex.Message;
         }
     }
 
@@ -87,104 +81,110 @@ public partial class MainPage : ContentPage
         if (!cameras.TryGetValue(
                 cameraName,
                 out string? ip))
-        {
-            CameraStatus.Text =
-                "Camera IP not found.";
-
             return;
-        }
 
-        await StartRtspAsync(
+        await StartCameraAsync(
             cameraName,
             ip);
     }
 
 
     // ============================================================
-    // START RTSP
+    // START RTSP LIVE VIEW
     // ============================================================
 
-    private async Task StartRtspAsync(
+    private async Task StartCameraAsync(
         string cameraName,
         string ip)
     {
         try
         {
-            // Stop previous camera
-            try
-            {
-                RtspPlayer.Stop();
-            }
-            catch
-            {
-                // Ignore
-            }
+            StopCamera();
 
+            string encodedUserName =
+                Uri.EscapeDataString(
+                    HikvisionUserName);
 
             string encodedPassword =
                 Uri.EscapeDataString(
                     HikvisionPassword);
 
-
             string rtspUrl =
-                $"rtsp://{HikvisionUserName}:" +
-                $"{encodedPassword}" +
+                $"rtsp://{encodedUserName}:{encodedPassword}" +
                 $"@{ip}:554/Streaming/Channels/101";
 
 
             CameraStatus.Text =
-                $"Connecting: {cameraName}";
-
+                $"Connecting to {cameraName}...";
 
             StatusLabel.Text =
                 $"RTSP: {ip}:554";
 
 
-            LiveViewMessage.Text =
-                $"CONNECTING...\n\n{cameraName}";
+            // ====================================================
+            // MEDIA ELEMENT
+            // ====================================================
+
+            MediaElement.Source =
+                MediaSource.FromUri(
+                    new Uri(rtspUrl));
+
+            MediaElement.ShouldAutoPlay = true;
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                MediaElement.Play();
+            });
 
 
-            // ----------------------------------------------------
-            // Assign Hikvision RTSP URL
-            // ----------------------------------------------------
+            CameraStatus.Text =
+                $"Live View: {cameraName}";
 
-            RtspPlayer.Source =
-                rtspUrl;
-
-
-            // ----------------------------------------------------
-            // Start playback
-            // ----------------------------------------------------
-
-            RtspPlayer.ShouldAutoPlay =
-                true;
-
-
-            RtspPlayer.Play();
-
-
-            LiveViewMessage.Text =
-                "";
-
-
-            await Task.CompletedTask;
+            StatusLabel.Text =
+                "RTSP stream started";
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
-                "RTSP Error";
+                $"Camera error: {ex.Message}";
 
             StatusLabel.Text =
-                ex.Message;
+                "RTSP failed";
 
-            LiveViewMessage.Text =
-                $"RTSP ERROR\n\n{ex.Message}";
+            try
+            {
+                MediaElement.Stop();
+                MediaElement.Source = null;
+            }
+            catch
+            {
+                // Ignore cleanup error
+            }
         }
     }
 
 
     // ============================================================
-    // DOOR 1
+    // STOP CAMERA
+    // ============================================================
+
+    private void StopCamera()
+    {
+        try
+        {
+            MediaElement.Stop();
+
+            MediaElement.Source = null;
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
+    }
+
+
+    // ============================================================
+    // DOOR BUTTONS
     // ============================================================
 
     private async void Door1_Clicked(
@@ -196,10 +196,6 @@ public partial class MainPage : ContentPage
     }
 
 
-    // ============================================================
-    // DOOR 2
-    // ============================================================
-
     private async void Door2_Clicked(
         object sender,
         EventArgs e)
@@ -209,10 +205,6 @@ public partial class MainPage : ContentPage
     }
 
 
-    // ============================================================
-    // DOOR 4
-    // ============================================================
-
     private async void Door4_Clicked(
         object sender,
         EventArgs e)
@@ -221,10 +213,6 @@ public partial class MainPage : ContentPage
             "Door 4 - WH4");
     }
 
-
-    // ============================================================
-    // DOOR 5
-    // ============================================================
 
     private async void Door5_Clicked(
         object sender,
@@ -256,18 +244,6 @@ public partial class MainPage : ContentPage
         }
 
 
-        if (string.IsNullOrWhiteSpace(
-                HikvisionPassword))
-        {
-            await DisplayAlertAsync(
-                "Door Control",
-                "Hikvision password is not configured.",
-                "OK");
-
-            return;
-        }
-
-
         try
         {
             string url =
@@ -289,9 +265,10 @@ public partial class MainPage : ContentPage
                 };
 
 
-            // ----------------------------------------------------
+            // ====================================================
             // FIRST REQUEST
-            // ----------------------------------------------------
+            // Get Digest Challenge
+            // ====================================================
 
             using HttpRequestMessage firstRequest =
                 new HttpRequestMessage(
@@ -311,9 +288,9 @@ public partial class MainPage : ContentPage
                     firstRequest);
 
 
-            // ----------------------------------------------------
-            // SUCCESS WITHOUT DIGEST
-            // ----------------------------------------------------
+            // ====================================================
+            // SOME HIKVISION DEVICES ACCEPT DIRECTLY
+            // ====================================================
 
             if (firstResponse.IsSuccessStatusCode)
             {
@@ -326,26 +303,21 @@ public partial class MainPage : ContentPage
             }
 
 
-            // ----------------------------------------------------
-            // EXPECT HTTP 401
-            // ----------------------------------------------------
+            // ====================================================
+            // EXPECT DIGEST CHALLENGE
+            // ====================================================
 
             if (firstResponse.StatusCode !=
                 HttpStatusCode.Unauthorized)
             {
                 await DisplayAlertAsync(
                     "Door Control",
-                    $"Command failed.\n\n" +
-                    $"HTTP {(int)firstResponse.StatusCode}",
+                    $"Command failed.\nHTTP {(int)firstResponse.StatusCode}",
                     "OK");
 
                 return;
             }
 
-
-            // ----------------------------------------------------
-            // GET DIGEST CHALLENGE
-            // ----------------------------------------------------
 
             string? authenticate =
                 firstResponse.Headers.WwwAuthenticate
@@ -362,7 +334,7 @@ public partial class MainPage : ContentPage
             {
                 await DisplayAlertAsync(
                     "Authentication Error",
-                    "Hikvision did not provide a Digest authentication challenge.",
+                    "Hikvision did not provide a Digest challenge.",
                     "OK");
 
                 return;
@@ -395,10 +367,6 @@ public partial class MainPage : ContentPage
                 out string? qop);
 
 
-            // ----------------------------------------------------
-            // DIGEST VALUES
-            // ----------------------------------------------------
-
             string cnonce =
                 CreateRandomHex(16);
 
@@ -407,15 +375,31 @@ public partial class MainPage : ContentPage
                 "00000001";
 
 
+            // ====================================================
+            // HA1
+            // ====================================================
+
             string ha1 =
                 Md5Hash(
                     $"{HikvisionUserName}:{realm}:{HikvisionPassword}");
 
 
+            // ====================================================
+            // HA2
+            // ====================================================
+
+            string uri =
+                new Uri(url).AbsolutePath;
+
+
             string ha2 =
                 Md5Hash(
-                    $"PUT:{new Uri(url).AbsolutePath}");
+                    $"PUT:{uri}");
 
+
+            // ====================================================
+            // RESPONSE HASH
+            // ====================================================
 
             string responseHash;
 
@@ -446,9 +430,9 @@ public partial class MainPage : ContentPage
             }
 
 
-            // ----------------------------------------------------
-            // AUTHORIZATION
-            // ----------------------------------------------------
+            // ====================================================
+            // AUTHORIZATION HEADER
+            // ====================================================
 
             string authorization =
                 BuildDigestAuthorization(
@@ -461,9 +445,9 @@ public partial class MainPage : ContentPage
                     url);
 
 
-            // ----------------------------------------------------
+            // ====================================================
             // SECOND REQUEST
-            // ----------------------------------------------------
+            // ====================================================
 
             using HttpRequestMessage secondRequest =
                 new HttpRequestMessage(
@@ -471,10 +455,9 @@ public partial class MainPage : ContentPage
                     url);
 
 
-            secondRequest.Headers
-                .TryAddWithoutValidation(
-                    "Authorization",
-                    authorization);
+            secondRequest.Headers.TryAddWithoutValidation(
+                "Authorization",
+                authorization);
 
 
             secondRequest.Content =
@@ -489,9 +472,9 @@ public partial class MainPage : ContentPage
                     secondRequest);
 
 
-            // ----------------------------------------------------
-            // SUCCESS
-            // ----------------------------------------------------
+            // ====================================================
+            // RESULT
+            // ====================================================
 
             if (secondResponse.IsSuccessStatusCode)
             {
@@ -519,8 +502,7 @@ public partial class MainPage : ContentPage
         {
             await DisplayAlertAsync(
                 "Door Control",
-                $"Unable to open {doorName}.\n\n" +
-                ex.Message,
+                $"Unable to open {doorName}.\n\n{ex.Message}",
                 "OK");
         }
     }
@@ -569,8 +551,7 @@ public partial class MainPage : ContentPage
                 value.Trim('"');
 
 
-            result[key] =
-                value;
+            result[key] = value;
         }
 
 
@@ -658,9 +639,8 @@ public partial class MainPage : ContentPage
     // MD5
     // ============================================================
 
-    private static string
-        Md5Hash(
-            string input)
+    private static string Md5Hash(
+        string input)
     {
         byte[] bytes =
             Encoding.UTF8.GetBytes(
@@ -682,9 +662,8 @@ public partial class MainPage : ContentPage
     // RANDOM CNONCE
     // ============================================================
 
-    private static string
-        CreateRandomHex(
-            int byteCount)
+    private static string CreateRandomHex(
+        int byteCount)
     {
         byte[] bytes =
             RandomNumberGenerator.GetBytes(
@@ -698,19 +677,12 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // CLEANUP
+    // PAGE DISAPPEARING
     // ============================================================
 
     protected override void OnDisappearing()
     {
-        try
-        {
-            RtspPlayer.Stop();
-        }
-        catch
-        {
-            // Ignore
-        }
+        StopCamera();
 
         base.OnDisappearing();
     }
