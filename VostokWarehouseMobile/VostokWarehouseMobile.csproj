@@ -12,7 +12,6 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
-    <!-- Media3 requires Android 8+ for this configuration -->
     <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
 
     <Nullable>enable</Nullable>
@@ -30,12 +29,10 @@
       Include="Microsoft.Maui.Controls"
       Version="$(MauiVersion)" />
 
-    <!-- Media3 ExoPlayer -->
     <PackageReference
       Include="Xamarin.AndroidX.Media3.ExoPlayer"
       Version="1.10.1.1" />
 
-    <!-- Media3 RTSP -->
     <PackageReference
       Include="Xamarin.AndroidX.Media3.ExoPlayer.Rtsp"
       Version="1.10.1.1" />
