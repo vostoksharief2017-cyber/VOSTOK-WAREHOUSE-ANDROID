@@ -16,7 +16,7 @@
 
     <ApplicationVersion>1</ApplicationVersion>
 
-    <!-- MediaElement requires Android 26+ -->
+    <!-- Media3 / modern Android -->
     <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
 
     <Nullable>enable</Nullable>
@@ -37,9 +37,15 @@
       Include="Microsoft.Maui.Controls"
       Version="$(MauiVersion)" />
 
+    <!-- Android Media3 ExoPlayer -->
     <PackageReference
-      Include="CommunityToolkit.Maui.MediaElement"
-      Version="10.0.0" />
+      Include="Xamarin.AndroidX.Media3.ExoPlayer"
+      Version="1.10.1.1" />
+
+    <!-- Android Media3 RTSP -->
+    <PackageReference
+      Include="Xamarin.AndroidX.Media3.ExoPlayer.Rtsp"
+      Version="1.10.1.1" />
 
   </ItemGroup>
 
