@@ -1,11 +1,14 @@
 using Android.App;
 using Android.Content.PM;
+using Android.OS;
 
 namespace VostokWarehouseMobile;
 
 [Activity(
     Theme = "@style/Maui.SplashTheme",
     MainLauncher = true,
+    LaunchMode = LaunchMode.SingleTask,
+    ResizeableActivity = true,
     ConfigurationChanges =
         ConfigChanges.ScreenSize |
         ConfigChanges.Orientation |
