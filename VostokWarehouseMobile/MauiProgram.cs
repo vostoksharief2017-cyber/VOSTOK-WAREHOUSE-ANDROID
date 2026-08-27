@@ -10,8 +10,7 @@ public static class MauiProgram
 
         builder
             .UseMauiApp<App>()
-            .UseMauiCommunityToolkitMediaElement(
-                isAndroidForegroundServiceEnabled: false);
+            .UseMauiCommunityToolkitMediaElement(false);
 
         return builder.Build();
     }
