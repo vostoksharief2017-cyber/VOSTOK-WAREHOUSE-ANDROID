@@ -1,7 +1,18 @@
+#if ANDROID
+
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using CommunityToolkit.Maui.Views;
+
+using Android.Content;
+using Android.Views;
+using Android.Widget;
+
+using AndroidX.Media3.Common;
+using AndroidX.Media3.ExoPlayer;
+using AndroidX.Media3.ExoPlayer.Rtsp;
+
+#endif
 
 namespace VostokWarehouseMobile;
 
@@ -42,6 +53,19 @@ public partial class MainPage : ContentPage
     };
 
 
+#if ANDROID
+
+    // ============================================================
+    // ANDROID MEDIA3
+    // ============================================================
+
+    private ExoPlayer? _player;
+
+    private SurfaceView? _surfaceView;
+
+#endif
+
+
     // ============================================================
     // CONSTRUCTOR
     // ============================================================
@@ -59,11 +83,11 @@ public partial class MainPage : ContentPage
 
             CameraStatus.Text = "Select a camera";
             StatusLabel.Text = "Ready";
+            VideoStatus.Text = "Select a camera";
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = "Application initialization failed.";
-            StatusLabel.Text = ex.Message;
+            StatusLabel.Text = $"Initialization error: {ex.Message}";
         }
     }
 
@@ -93,98 +117,250 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // START HIKVISION RTSP LIVE VIEW
+    // START CAMERA
     // ============================================================
 
     private async Task StartCameraAsync(
         string cameraName,
         string ip)
     {
+#if ANDROID
+
         try
         {
             StopCamera();
 
+            CameraStatus.Text =
+                $"Connecting to {cameraName}...";
+
+            StatusLabel.Text =
+                "Starting RTSP decoder...";
+
+            VideoStatus.Text =
+                "Connecting to RTSP...";
+
+
+            // ====================================================
+            // IMPORTANT
+            //
+            // Hikvision:
+            //
+            // 101 = Main stream
+            // 102 = Sub stream
+            //
+            // Your 102 stream works in VLC.
+            // ====================================================
+
             string encodedPassword =
                 Uri.EscapeDataString(
                     HikvisionPassword);
-
-            /*
-             * Hikvision main stream:
-             *
-             * Channel 101
-             *
-             * 1 = camera channel
-             * 01 = main stream
-             */
 
             string rtspUrl =
                 $"rtsp://{HikvisionUserName}:{encodedPassword}" +
                 $"@{ip}:554/Streaming/Channels/102";
 
 
-            CameraStatus.Text =
-                $"Connecting to {cameraName}...";
+            // ====================================================
+            // CREATE NATIVE ANDROID SURFACE
+            // ====================================================
 
-            StatusLabel.Text =
-                "Opening RTSP stream...";
+            _surfaceView =
+                new SurfaceView(
+                    Android.App.Application.Context);
+
+
+            _surfaceView.LayoutParameters =
+                new Android.Widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MatchParent,
+                    ViewGroup.LayoutParams.MatchParent);
 
 
             // ====================================================
-            // MEDIA ELEMENT SOURCE
+            // ADD SURFACE TO MAUI CONTAINER
             // ====================================================
 
-            LivePlayer.Source =
-                new UriMediaSource
-                {
-                    Uri = new Uri(rtspUrl)
-                };
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                VideoContainer.Children.Clear();
+
+                VideoContainer.Children.Add(
+                    new Android.Views.View
+                    {
+                    });
+
+                VideoStatus.Text =
+                    "Connecting...";
+            });
 
 
-            LivePlayer.ShouldAutoPlay = true;
+            // ====================================================
+            // CREATE MEDIA3 EXOPLAYER
+            // ====================================================
+
+            _player =
+                new ExoPlayer.Builder(
+                    Android.App.Application.Context)
+                .Build();
 
 
-            // Start playback
+            // ====================================================
+            // CREATE RTSP MEDIA SOURCE
+            // ====================================================
 
-            LivePlayer.Play();
+            var mediaItem =
+                MediaItem.FromUri(
+                    Android.Net.Uri.Parse(
+                        rtspUrl));
+
+
+            var rtspFactory =
+                new RtspMediaSource.Factory();
+
+
+            // ====================================================
+            // VERY IMPORTANT
+            //
+            // FORCE RTP OVER TCP
+            //
+            // Hikvision RTSP is known to work better with
+            // TCP in some LAN/network configurations.
+            // ====================================================
+
+            rtspFactory.SetForceUseRtpTcp(
+                true);
+
+
+            RtspMediaSource mediaSource =
+                rtspFactory.CreateMediaSource(
+                    mediaItem);
+
+
+            // ====================================================
+            // ATTACH SOURCE
+            // ====================================================
+
+            _player.SetMediaSource(
+                mediaSource);
+
+
+            // ====================================================
+            // PREPARE
+            // ====================================================
+
+            _player.Prepare();
+
+
+            // ====================================================
+            // START PLAYBACK
+            // ====================================================
+
+            _player.PlayWhenReady = true;
 
 
             CameraStatus.Text =
                 $"Live View: {cameraName}";
 
             StatusLabel.Text =
-                $"RTSP: {ip}:554";
+                "RTSP connected";
 
-            await Task.CompletedTask;
+            VideoStatus.Text =
+                "Playing";
+
+
+            // ====================================================
+            // NOTE
+            //
+            // Native video surface attachment is handled below.
+            // ====================================================
+
+            AttachVideoSurface();
+
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
-                "RTSP connection failed.";
+                $"Camera error: {ex.Message}";
 
             StatusLabel.Text =
+                "RTSP error";
+
+            VideoStatus.Text =
                 ex.Message;
+        }
+
+#else
+
+        await DisplayAlertAsync(
+            "RTSP",
+            "Native Android RTSP playback is available only on Android.",
+            "OK");
+
+#endif
+    }
+
+
+#if ANDROID
+
+    // ============================================================
+    // ATTACH VIDEO SURFACE
+    // ============================================================
+
+    private void AttachVideoSurface()
+    {
+        try
+        {
+            if (_player == null)
+                return;
+
+            if (_surfaceView == null)
+                return;
+
+            // ====================================================
+            // Media3 Player accepts Android Surface.
+            // ====================================================
+
+            _player.SetVideoSurfaceView(
+                _surfaceView);
+
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text =
+                $"Video surface error: {ex.Message}";
         }
     }
 
 
     // ============================================================
-    // STOP LIVE VIEW
+    // STOP CAMERA
     // ============================================================
 
     private void StopCamera()
     {
         try
         {
-            LivePlayer.Stop();
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
+            if (_player != null)
+            {
+                _player.Stop();
 
-        try
-        {
-            LivePlayer.Source = null;
+                _player.ClearVideoSurface();
+
+                _player.Release();
+
+                _player.Dispose();
+
+                _player = null;
+            }
+
+            _surfaceView = null;
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                VideoContainer.Children.Clear();
+
+                VideoStatus.Text =
+                    "Select a camera";
+            });
         }
         catch
         {
@@ -192,9 +368,11 @@ public partial class MainPage : ContentPage
         }
     }
 
+#endif
+
 
     // ============================================================
-    // DOOR BUTTONS
+    // DOOR 1
     // ============================================================
 
     private async void Door1_Clicked(
@@ -206,6 +384,10 @@ public partial class MainPage : ContentPage
     }
 
 
+    // ============================================================
+    // DOOR 2
+    // ============================================================
+
     private async void Door2_Clicked(
         object sender,
         EventArgs e)
@@ -215,6 +397,10 @@ public partial class MainPage : ContentPage
     }
 
 
+    // ============================================================
+    // DOOR 4
+    // ============================================================
+
     private async void Door4_Clicked(
         object sender,
         EventArgs e)
@@ -223,6 +409,10 @@ public partial class MainPage : ContentPage
             "Door 4 - WH4");
     }
 
+
+    // ============================================================
+    // DOOR 5
+    // ============================================================
 
     private async void Door5_Clicked(
         object sender,
@@ -298,10 +488,6 @@ public partial class MainPage : ContentPage
                     firstRequest);
 
 
-            // ====================================================
-            // IF CAMERA ACCEPTED WITHOUT DIGEST
-            // ====================================================
-
             if (firstResponse.IsSuccessStatusCode)
             {
                 await DisplayAlertAsync(
@@ -312,10 +498,6 @@ public partial class MainPage : ContentPage
                 return;
             }
 
-
-            // ====================================================
-            // MUST BE HTTP 401
-            // ====================================================
 
             if (firstResponse.StatusCode !=
                 HttpStatusCode.Unauthorized)
@@ -330,15 +512,16 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // READ DIGEST CHALLENGE
+            // GET DIGEST HEADER
             // ====================================================
 
             string? authenticate =
                 firstResponse.Headers.WwwAuthenticate
                     .FirstOrDefault(
-                        x => x.Scheme.Equals(
-                            "Digest",
-                            StringComparison.OrdinalIgnoreCase))
+                        x =>
+                            x.Scheme.Equals(
+                                "Digest",
+                                StringComparison.OrdinalIgnoreCase))
                     ?.Parameter;
 
 
@@ -380,10 +563,6 @@ public partial class MainPage : ContentPage
                 out string? qop);
 
 
-            // ====================================================
-            // DIGEST VALUES
-            // ====================================================
-
             string cnonce =
                 CreateRandomHex(16);
 
@@ -392,10 +571,18 @@ public partial class MainPage : ContentPage
                 "00000001";
 
 
+            // ====================================================
+            // HA1
+            // ====================================================
+
             string ha1 =
                 Md5Hash(
                     $"{HikvisionUserName}:{realm}:{HikvisionPassword}");
 
+
+            // ====================================================
+            // HA2
+            // ====================================================
 
             string ha2 =
                 Md5Hash(
@@ -408,13 +595,14 @@ public partial class MainPage : ContentPage
             if (!string.IsNullOrWhiteSpace(qop))
             {
                 string selectedQop =
-                    qop
-                        .Split(',')
-                        .Select(x => x.Trim())
-                        .FirstOrDefault(
-                            x => x.Equals(
-                                "auth",
-                                StringComparison.OrdinalIgnoreCase))
+                    qop.Split(',')
+                       .Select(
+                           x => x.Trim())
+                       .FirstOrDefault(
+                           x =>
+                               x.Equals(
+                                   "auth",
+                                   StringComparison.OrdinalIgnoreCase))
                     ?? "auth";
 
 
@@ -431,7 +619,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // BUILD AUTHORIZATION HEADER
+            // AUTHORIZATION
             // ====================================================
 
             string authorization =
@@ -447,7 +635,6 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // SECOND REQUEST
-            // AUTHENTICATED DOOR OPEN
             // ====================================================
 
             using HttpRequestMessage secondRequest =
@@ -456,10 +643,9 @@ public partial class MainPage : ContentPage
                     url);
 
 
-            secondRequest.Headers
-                .TryAddWithoutValidation(
-                    "Authorization",
-                    authorization);
+            secondRequest.Headers.TryAddWithoutValidation(
+                "Authorization",
+                authorization);
 
 
             secondRequest.Content =
@@ -473,10 +659,6 @@ public partial class MainPage : ContentPage
                 await client.SendAsync(
                     secondRequest);
 
-
-            // ====================================================
-            // RESULT
-            // ====================================================
 
             if (secondResponse.IsSuccessStatusCode)
             {
@@ -553,7 +735,8 @@ public partial class MainPage : ContentPage
                 value.Trim('"');
 
 
-            result[key] = value;
+            result[key] =
+                value;
         }
 
 
@@ -609,13 +792,14 @@ public partial class MainPage : ContentPage
         if (!string.IsNullOrWhiteSpace(qop))
         {
             string selectedQop =
-                qop
-                    .Split(',')
-                    .Select(x => x.Trim())
-                    .FirstOrDefault(
-                        x => x.Equals(
-                            "auth",
-                            StringComparison.OrdinalIgnoreCase))
+                qop.Split(',')
+                   .Select(
+                       x => x.Trim())
+                   .FirstOrDefault(
+                       x =>
+                           x.Equals(
+                               "auth",
+                               StringComparison.OrdinalIgnoreCase))
                 ?? "auth";
 
 
@@ -637,7 +821,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // MD5 HASH
+    // MD5
     // ============================================================
 
     private static string Md5Hash(
@@ -654,7 +838,7 @@ public partial class MainPage : ContentPage
 
 
         return Convert.ToHexString(
-            hash)
+                hash)
             .ToLowerInvariant();
     }
 
@@ -672,25 +856,20 @@ public partial class MainPage : ContentPage
 
 
         return Convert.ToHexString(
-            bytes)
+                bytes)
             .ToLowerInvariant();
     }
 
 
     // ============================================================
-    // PAGE CLEANUP
+    // CLEANUP
     // ============================================================
 
     protected override void OnDisappearing()
     {
-        try
-        {
-            StopCamera();
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
+#if ANDROID
+        StopCamera();
+#endif
 
         base.OnDisappearing();
     }
