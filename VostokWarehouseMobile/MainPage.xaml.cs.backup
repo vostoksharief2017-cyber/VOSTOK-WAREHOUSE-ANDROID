@@ -4,11 +4,13 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
+using Android.Content;
 using Android.Views;
 using Android.Widget;
 
 using AndroidX.Media3.Common;
 using AndroidX.Media3.ExoPlayer;
+using AndroidX.Media3.ExoPlayer.Rtsp;
 
 #endif
 
@@ -16,8 +18,18 @@ namespace VostokWarehouseMobile;
 
 public partial class MainPage : ContentPage
 {
+    // ============================================================
+    // HIKVISION SETTINGS
+    // ============================================================
+
     private const string HikvisionUserName = "admin";
+
     private const string HikvisionPassword = "Vos@3558817";
+
+
+    // ============================================================
+    // CAMERA LIST
+    // ============================================================
 
     private readonly Dictionary<string, string> cameras = new()
     {
@@ -27,6 +39,11 @@ public partial class MainPage : ContentPage
         ["WareHouse-5"] = "192.168.5.132"
     };
 
+
+    // ============================================================
+    // DOOR LIST
+    // ============================================================
+
     private readonly Dictionary<string, string> doors = new()
     {
         ["Door 1 - WH7"] = "192.168.5.131",
@@ -35,12 +52,23 @@ public partial class MainPage : ContentPage
         ["Door 5 - WH5"] = "192.168.5.132"
     };
 
+
 #if ANDROID
-    // IMPORTANT: Microsoft AndroidX Media3 bindings expose ExoPlayer
-    // through IExoPlayer + ExoPlayerBuilder, not ExoPlayer.Builder.
-    private IExoPlayer? _player;
+
+    // ============================================================
+    // ANDROID MEDIA3
+    // ============================================================
+
+    private ExoPlayer? _player;
+
     private SurfaceView? _surfaceView;
+
 #endif
+
+
+    // ============================================================
+    // CONSTRUCTOR
+    // ============================================================
 
     public MainPage()
     {
@@ -49,7 +77,9 @@ public partial class MainPage : ContentPage
         try
         {
             foreach (string cameraName in cameras.Keys)
+            {
                 CameraPicker.Items.Add(cameraName);
+            }
 
             CameraStatus.Text = "Select a camera";
             StatusLabel.Text = "Ready";
@@ -61,117 +91,249 @@ public partial class MainPage : ContentPage
         }
     }
 
-    private async void CameraPicker_SelectedIndexChanged(object? sender, EventArgs e)
+
+    // ============================================================
+    // CAMERA SELECTION
+    // ============================================================
+
+    private async void CameraPicker_SelectedIndexChanged(
+        object? sender,
+        EventArgs e)
     {
         if (CameraPicker.SelectedItem is not string cameraName)
             return;
 
-        if (!cameras.TryGetValue(cameraName, out string? ip))
+        if (!cameras.TryGetValue(
+                cameraName,
+                out string? ip))
+        {
             return;
+        }
 
-        await StartCameraAsync(cameraName, ip);
+        await StartCameraAsync(
+            cameraName,
+            ip);
     }
 
-    private async Task StartCameraAsync(string cameraName, string ip)
+
+    // ============================================================
+    // START CAMERA
+    // ============================================================
+
+    private async Task StartCameraAsync(
+        string cameraName,
+        string ip)
     {
 #if ANDROID
+
         try
         {
             StopCamera();
 
-            CameraStatus.Text = $"Connecting to {cameraName}...";
-            StatusLabel.Text = "Starting RTSP decoder...";
-            VideoStatus.Text = "Connecting to RTSP...";
+            CameraStatus.Text =
+                $"Connecting to {cameraName}...";
 
-            string encodedPassword = Uri.EscapeDataString(HikvisionPassword);
+            StatusLabel.Text =
+                "Starting RTSP decoder...";
+
+            VideoStatus.Text =
+                "Connecting to RTSP...";
+
+
+            // ====================================================
+            // IMPORTANT
+            //
+            // Hikvision:
+            //
+            // 101 = Main stream
+            // 102 = Sub stream
+            //
+            // Your 102 stream works in VLC.
+            // ====================================================
+
+            string encodedPassword =
+                Uri.EscapeDataString(
+                    HikvisionPassword);
+
             string rtspUrl =
-                $"rtsp://{HikvisionUserName}:{encodedPassword}@{ip}:554/Streaming/Channels/102";
+                $"rtsp://{HikvisionUserName}:{encodedPassword}" +
+                $"@{ip}:554/Streaming/Channels/102";
 
-            // Create the Android video surface.
-            _surfaceView = new SurfaceView(Android.App.Application.Context)
+
+            // ====================================================
+            // CREATE NATIVE ANDROID SURFACE
+            // ====================================================
+
+            _surfaceView =
+                new SurfaceView(
+                    Android.App.Application.Context);
+
+
+            _surfaceView.LayoutParameters =
+                new Android.Widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MatchParent,
+                    ViewGroup.LayoutParams.MatchParent);
+
+
+            // ====================================================
+            // ADD SURFACE TO MAUI CONTAINER
+            // ====================================================
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                KeepScreenOn = true
-            };
+                VideoContainer.Children.Clear();
 
-            _surfaceView.LayoutParameters = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MatchParent,
-                ViewGroup.LayoutParams.MatchParent);
+                VideoContainer.Children.Add(
+                    new Android.Views.View
+                    {
+                    });
 
-            // Create Media3 player using the actual .NET Android binding API.
-            var builder = new ExoPlayerBuilder(
-                Android.App.Application.Context);
+                VideoStatus.Text =
+                    "Connecting...";
+            });
 
-            _player = builder.Build();
 
-            // Attach the native surface to Media3.
-            _player.SetVideoSurfaceView(_surfaceView);
+            // ====================================================
+            // CREATE MEDIA3 EXOPLAYER
+            // ====================================================
 
-            // Put the native SurfaceView inside the MAUI Grid's native ViewGroup.
-            await MainThread.InvokeOnMainThreadAsync(AttachNativeSurface);
+            _player =
+                new ExoPlayer.Builder(
+                    Android.App.Application.Context)
+                .Build();
 
-            // Media3's default media source factory recognizes rtsp:// when
-            // the Media3 RTSP package is present.
-            var mediaItem = MediaItem.FromUri(
-                Android.Net.Uri.Parse(rtspUrl));
 
-            _player.SetMediaItem(mediaItem);
-            _player.PlayWhenReady = true;
+            // ====================================================
+            // CREATE RTSP MEDIA SOURCE
+            // ====================================================
+
+            var mediaItem =
+                MediaItem.FromUri(
+                    Android.Net.Uri.Parse(
+                        rtspUrl));
+
+
+            var rtspFactory =
+                new RtspMediaSource.Factory();
+
+
+            // ====================================================
+            // VERY IMPORTANT
+            //
+            // FORCE RTP OVER TCP
+            //
+            // Hikvision RTSP is known to work better with
+            // TCP in some LAN/network configurations.
+            // ====================================================
+
+            rtspFactory.SetForceUseRtpTcp(
+                true);
+
+
+            RtspMediaSource mediaSource =
+                rtspFactory.CreateMediaSource(
+                    mediaItem);
+
+
+            // ====================================================
+            // ATTACH SOURCE
+            // ====================================================
+
+            _player.SetMediaSource(
+                mediaSource);
+
+
+            // ====================================================
+            // PREPARE
+            // ====================================================
+
             _player.Prepare();
 
-            CameraStatus.Text = $"Live View: {cameraName}";
-            StatusLabel.Text = "RTSP connecting...";
-            VideoStatus.Text = "Buffering...";
+
+            // ====================================================
+            // START PLAYBACK
+            // ====================================================
+
+            _player.PlayWhenReady = true;
+
+
+            CameraStatus.Text =
+                $"Live View: {cameraName}";
+
+            StatusLabel.Text =
+                "RTSP connected";
+
+            VideoStatus.Text =
+                "Playing";
+
+
+            // ====================================================
+            // NOTE
+            //
+            // Native video surface attachment is handled below.
+            // ====================================================
+
+            AttachVideoSurface();
+
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = $"Camera error: {ex.Message}";
-            StatusLabel.Text = "RTSP error";
-            VideoStatus.Text = ex.Message;
+            CameraStatus.Text =
+                $"Camera error: {ex.Message}";
+
+            StatusLabel.Text =
+                "RTSP error";
+
+            VideoStatus.Text =
+                ex.Message;
         }
+
 #else
+
         await DisplayAlertAsync(
             "RTSP",
             "Native Android RTSP playback is available only on Android.",
             "OK");
+
 #endif
     }
 
+
 #if ANDROID
-    private void AttachNativeSurface()
+
+    // ============================================================
+    // ATTACH VIDEO SURFACE
+    // ============================================================
+
+    private void AttachVideoSurface()
     {
-        if (_surfaceView == null)
-            return;
-
-        if (VideoContainer.Handler?.PlatformView is ViewGroup parent)
+        try
         {
-            try
-            {
-                if (_surfaceView.Parent is ViewGroup oldParent)
-                    oldParent.RemoveView(_surfaceView);
+            if (_player == null)
+                return;
 
-                parent.AddView(_surfaceView);
-                _surfaceView.LayoutParameters = new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MatchParent,
-                    ViewGroup.LayoutParams.MatchParent);
-                _surfaceView.BringToFront();
-            }
-            catch (Exception ex)
-            {
-                StatusLabel.Text = $"Video surface error: {ex.Message}";
-            }
+            if (_surfaceView == null)
+                return;
+
+            // ====================================================
+            // Media3 Player accepts Android Surface.
+            // ====================================================
+
+            _player.SetVideoSurfaceView(
+                _surfaceView);
+
         }
-        else
+        catch (Exception ex)
         {
-            VideoContainer.HandlerChanged -= VideoContainer_HandlerChanged;
-            VideoContainer.HandlerChanged += VideoContainer_HandlerChanged;
+            StatusLabel.Text =
+                $"Video surface error: {ex.Message}";
         }
     }
 
-    private void VideoContainer_HandlerChanged(object? sender, EventArgs e)
-    {
-        VideoContainer.HandlerChanged -= VideoContainer_HandlerChanged;
-        MainThread.BeginInvokeOnMainThread(AttachNativeSurface);
-    }
+
+    // ============================================================
+    // STOP CAMERA
+    // ============================================================
 
     private void StopCamera()
     {
@@ -180,28 +342,34 @@ public partial class MainPage : ContentPage
             if (_player != null)
             {
                 _player.Stop();
+
                 _player.ClearVideoSurface();
+
                 _player.Release();
+
                 _player.Dispose();
+
                 _player = null;
             }
-
-            if (_surfaceView?.Parent is ViewGroup parent)
-                parent.RemoveView(_surfaceView);
 
             _surfaceView = null;
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                VideoStatus.Text = "Select a camera";
+                VideoContainer.Children.Clear();
+
+                VideoStatus.Text =
+                    "Select a camera";
             });
         }
         catch
         {
-            // Ignore cleanup errors.
+            // Ignore cleanup errors
         }
     }
+
 #endif
+
 
     // ============================================================
     // DOOR 1
