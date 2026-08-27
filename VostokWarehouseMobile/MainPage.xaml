@@ -3,14 +3,16 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    x:Class="VostokWarehouseMobile.MainPage">
+    x:Class="VostokWarehouseMobile.MainPage"
+    Title="VOSTOK WAREHOUSE">
 
     <Grid
         RowDefinitions="Auto,*,Auto"
-        Padding="10">
+        Padding="10"
+        RowSpacing="10">
 
         <!-- ================================================= -->
-        <!-- HEADER                                            -->
+        <!-- HEADER -->
         <!-- ================================================= -->
 
         <VerticalStackLayout
@@ -31,31 +33,36 @@
             <Label
                 x:Name="CameraStatus"
                 Text="Select a camera"
-                HorizontalOptions="Center" />
+                HorizontalOptions="Center"
+                FontSize="14" />
 
             <Label
                 x:Name="StatusLabel"
                 Text="Ready"
-                HorizontalOptions="Center" />
+                HorizontalOptions="Center"
+                FontSize="12" />
 
         </VerticalStackLayout>
 
 
         <!-- ================================================= -->
-        <!-- LIVE VIEW                                         -->
+        <!-- RTSP LIVE VIEW -->
         <!-- ================================================= -->
 
         <Border
             Grid.Row="1"
             StrokeThickness="1"
-            Margin="0,10">
+            Margin="0,5">
 
+            <!-- Native Android PlayerView is inserted here -->
             <Grid
                 x:Name="VideoContainer"
-                BackgroundColor="Black">
+                BackgroundColor="Black"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill">
 
                 <Label
-                    x:Name="VideoStatus"
+                    x:Name="VideoPlaceholder"
                     Text="Select a camera"
                     TextColor="White"
                     HorizontalOptions="Center"
@@ -67,7 +74,7 @@
 
 
         <!-- ================================================= -->
-        <!-- DOOR BUTTONS                                      -->
+        <!-- DOOR BUTTONS -->
         <!-- ================================================= -->
 
         <Grid
