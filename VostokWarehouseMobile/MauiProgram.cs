@@ -1,5 +1,5 @@
 using CommunityToolkit.Maui;
-using Microsoft.Extensions.Logging;
+using CommunityToolkit.Maui.MediaElement;
 
 namespace VostokWarehouseMobile;
 
@@ -11,26 +11,7 @@ public static class MauiProgram
 
         builder
             .UseMauiApp<App>()
-
-            // CommunityToolkit MediaElement
-            .UseMauiCommunityToolkitMediaElement(
-                enableForegroundService: false)
-
-            .ConfigureFonts(fonts =>
-            {
-                fonts.AddFont(
-                    "OpenSans-Regular.ttf",
-                    "OpenSansRegular");
-
-                fonts.AddFont(
-                    "OpenSans-Semibold.ttf",
-                    "OpenSansSemibold");
-            });
-
-
-#if DEBUG
-        builder.Logging.AddDebug();
-#endif
+            .UseMauiCommunityToolkitMediaElement();
 
         return builder.Build();
     }
