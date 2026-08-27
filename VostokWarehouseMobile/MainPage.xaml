@@ -4,8 +4,7 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
-    x:Class="VostokWarehouseMobile.MainPage"
-    Title="VOSTOK WAREHOUSE">
+    x:Class="VostokWarehouseMobile.MainPage">
 
     <Grid
         RowDefinitions="Auto,*,Auto"
@@ -44,7 +43,7 @@
 
 
         <!-- ================================================= -->
-        <!-- LIVE VIDEO -->
+        <!-- RTSP LIVE VIEW -->
         <!-- ================================================= -->
 
         <Border
@@ -53,8 +52,8 @@
             StrokeThickness="1">
 
             <toolkit:MediaElement
-                x:Name="MediaElement"
-                ShouldAutoPlay="False"
+                x:Name="LivePlayer"
+                ShouldAutoPlay="True"
                 ShouldShowPlaybackControls="False"
                 Aspect="AspectFit"
                 HorizontalOptions="Fill"
