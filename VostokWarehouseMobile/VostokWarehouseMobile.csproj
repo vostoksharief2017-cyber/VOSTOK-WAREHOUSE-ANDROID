@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+
     <TargetFramework>net10.0-android</TargetFramework>
 
     <OutputType>Exe</OutputType>
@@ -8,21 +9,27 @@
     <RootNamespace>VostokWarehouseMobile</RootNamespace>
 
     <ApplicationTitle>VOSTOK-WAREHOUSE</ApplicationTitle>
+
     <ApplicationId>com.vostok.warehouse</ApplicationId>
 
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+
     <ApplicationVersion>1</ApplicationVersion>
 
     <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
 
     <Nullable>enable</Nullable>
+
     <ImplicitUsings>enable</ImplicitUsings>
 
     <UseMaui>true</UseMaui>
+
     <SingleProject>true</SingleProject>
 
-    <MauiVersion>10.0.31</MauiVersion>
+    <MauiVersion>10.0.60</MauiVersion>
+
   </PropertyGroup>
+
 
   <ItemGroup>
 
@@ -30,7 +37,12 @@
       Include="Microsoft.Maui.Controls"
       Version="$(MauiVersion)" />
 
+    <PackageReference
+      Include="CommunityToolkit.Maui.MediaElement"
+      Version="10.0.0" />
+
   </ItemGroup>
+
 
   <ItemGroup>
 
