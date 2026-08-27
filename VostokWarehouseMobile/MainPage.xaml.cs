@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using CommunityToolkit.Maui.Views;
 
 namespace VostokWarehouseMobile;
 
@@ -61,7 +62,7 @@ public partial class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = "Initialization error";
+            CameraStatus.Text = "Application initialization failed.";
             StatusLabel.Text = ex.Message;
         }
     }
@@ -81,7 +82,9 @@ public partial class MainPage : ContentPage
         if (!cameras.TryGetValue(
                 cameraName,
                 out string? ip))
+        {
             return;
+        }
 
         await StartCameraAsync(
             cameraName,
@@ -90,7 +93,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // START RTSP LIVE VIEW
+    // START HIKVISION RTSP LIVE VIEW
     // ============================================================
 
     private async Task StartCameraAsync(
@@ -101,16 +104,21 @@ public partial class MainPage : ContentPage
         {
             StopCamera();
 
-            string encodedUserName =
-                Uri.EscapeDataString(
-                    HikvisionUserName);
-
             string encodedPassword =
                 Uri.EscapeDataString(
                     HikvisionPassword);
 
+            /*
+             * Hikvision main stream:
+             *
+             * Channel 101
+             *
+             * 1 = camera channel
+             * 01 = main stream
+             */
+
             string rtspUrl =
-                $"rtsp://{encodedUserName}:{encodedPassword}" +
+                $"rtsp://{HikvisionUserName}:{encodedPassword}" +
                 $"@{ip}:554/Streaming/Channels/101";
 
 
@@ -118,63 +126,65 @@ public partial class MainPage : ContentPage
                 $"Connecting to {cameraName}...";
 
             StatusLabel.Text =
-                $"RTSP: {ip}:554";
+                "Opening RTSP stream...";
 
 
             // ====================================================
-            // MEDIA ELEMENT
+            // MEDIA ELEMENT SOURCE
             // ====================================================
 
-            MediaElement.Source =
-                MediaSource.FromUri(
-                    new Uri(rtspUrl));
+            LivePlayer.Source =
+                new UriMediaSource
+                {
+                    Uri = new Uri(rtspUrl)
+                };
 
-            MediaElement.ShouldAutoPlay = true;
 
-            await MainThread.InvokeOnMainThreadAsync(() =>
-            {
-                MediaElement.Play();
-            });
+            LivePlayer.ShouldAutoPlay = true;
+
+
+            // Start playback
+
+            LivePlayer.Play();
 
 
             CameraStatus.Text =
                 $"Live View: {cameraName}";
 
             StatusLabel.Text =
-                "RTSP stream started";
+                $"RTSP: {ip}:554";
+
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
-                $"Camera error: {ex.Message}";
+                "RTSP connection failed.";
 
             StatusLabel.Text =
-                "RTSP failed";
-
-            try
-            {
-                MediaElement.Stop();
-                MediaElement.Source = null;
-            }
-            catch
-            {
-                // Ignore cleanup error
-            }
+                ex.Message;
         }
     }
 
 
     // ============================================================
-    // STOP CAMERA
+    // STOP LIVE VIEW
     // ============================================================
 
     private void StopCamera()
     {
         try
         {
-            MediaElement.Stop();
+            LivePlayer.Stop();
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
-            MediaElement.Source = null;
+        try
+        {
+            LivePlayer.Source = null;
         }
         catch
         {
@@ -267,7 +277,7 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // FIRST REQUEST
-            // Get Digest Challenge
+            // GET DIGEST CHALLENGE
             // ====================================================
 
             using HttpRequestMessage firstRequest =
@@ -289,7 +299,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // SOME HIKVISION DEVICES ACCEPT DIRECTLY
+            // IF CAMERA ACCEPTED WITHOUT DIGEST
             // ====================================================
 
             if (firstResponse.IsSuccessStatusCode)
@@ -304,7 +314,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // EXPECT DIGEST CHALLENGE
+            // MUST BE HTTP 401
             // ====================================================
 
             if (firstResponse.StatusCode !=
@@ -319,13 +329,16 @@ public partial class MainPage : ContentPage
             }
 
 
+            // ====================================================
+            // READ DIGEST CHALLENGE
+            // ====================================================
+
             string? authenticate =
                 firstResponse.Headers.WwwAuthenticate
                     .FirstOrDefault(
-                        x =>
-                            x.Scheme.Equals(
-                                "Digest",
-                                StringComparison.OrdinalIgnoreCase))
+                        x => x.Scheme.Equals(
+                            "Digest",
+                            StringComparison.OrdinalIgnoreCase))
                     ?.Parameter;
 
 
@@ -334,7 +347,7 @@ public partial class MainPage : ContentPage
             {
                 await DisplayAlertAsync(
                     "Authentication Error",
-                    "Hikvision did not provide a Digest challenge.",
+                    "Hikvision did not provide a Digest authentication challenge.",
                     "OK");
 
                 return;
@@ -367,6 +380,10 @@ public partial class MainPage : ContentPage
                 out string? qop);
 
 
+            // ====================================================
+            // DIGEST VALUES
+            // ====================================================
+
             string cnonce =
                 CreateRandomHex(16);
 
@@ -375,31 +392,15 @@ public partial class MainPage : ContentPage
                 "00000001";
 
 
-            // ====================================================
-            // HA1
-            // ====================================================
-
             string ha1 =
                 Md5Hash(
                     $"{HikvisionUserName}:{realm}:{HikvisionPassword}");
 
 
-            // ====================================================
-            // HA2
-            // ====================================================
-
-            string uri =
-                new Uri(url).AbsolutePath;
-
-
             string ha2 =
                 Md5Hash(
-                    $"PUT:{uri}");
+                    $"PUT:{new Uri(url).AbsolutePath}");
 
-
-            // ====================================================
-            // RESPONSE HASH
-            // ====================================================
 
             string responseHash;
 
@@ -407,14 +408,13 @@ public partial class MainPage : ContentPage
             if (!string.IsNullOrWhiteSpace(qop))
             {
                 string selectedQop =
-                    qop.Split(',')
-                       .Select(
-                           x => x.Trim())
-                       .FirstOrDefault(
-                           x =>
-                               x.Equals(
-                                   "auth",
-                                   StringComparison.OrdinalIgnoreCase))
+                    qop
+                        .Split(',')
+                        .Select(x => x.Trim())
+                        .FirstOrDefault(
+                            x => x.Equals(
+                                "auth",
+                                StringComparison.OrdinalIgnoreCase))
                     ?? "auth";
 
 
@@ -431,7 +431,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // AUTHORIZATION HEADER
+            // BUILD AUTHORIZATION HEADER
             // ====================================================
 
             string authorization =
@@ -447,6 +447,7 @@ public partial class MainPage : ContentPage
 
             // ====================================================
             // SECOND REQUEST
+            // AUTHENTICATED DOOR OPEN
             // ====================================================
 
             using HttpRequestMessage secondRequest =
@@ -455,9 +456,10 @@ public partial class MainPage : ContentPage
                     url);
 
 
-            secondRequest.Headers.TryAddWithoutValidation(
-                "Authorization",
-                authorization);
+            secondRequest.Headers
+                .TryAddWithoutValidation(
+                    "Authorization",
+                    authorization);
 
 
             secondRequest.Content =
@@ -607,14 +609,13 @@ public partial class MainPage : ContentPage
         if (!string.IsNullOrWhiteSpace(qop))
         {
             string selectedQop =
-                qop.Split(',')
-                   .Select(
-                       x => x.Trim())
-                   .FirstOrDefault(
-                       x =>
-                           x.Equals(
-                               "auth",
-                               StringComparison.OrdinalIgnoreCase))
+                qop
+                    .Split(',')
+                    .Select(x => x.Trim())
+                    .FirstOrDefault(
+                        x => x.Equals(
+                            "auth",
+                            StringComparison.OrdinalIgnoreCase))
                 ?? "auth";
 
 
@@ -636,7 +637,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // MD5
+    // MD5 HASH
     // ============================================================
 
     private static string Md5Hash(
@@ -653,7 +654,7 @@ public partial class MainPage : ContentPage
 
 
         return Convert.ToHexString(
-                hash)
+            hash)
             .ToLowerInvariant();
     }
 
@@ -671,18 +672,25 @@ public partial class MainPage : ContentPage
 
 
         return Convert.ToHexString(
-                bytes)
+            bytes)
             .ToLowerInvariant();
     }
 
 
     // ============================================================
-    // PAGE DISAPPEARING
+    // PAGE CLEANUP
     // ============================================================
 
     protected override void OnDisappearing()
     {
-        StopCamera();
+        try
+        {
+            StopCamera();
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
 
         base.OnDisappearing();
     }
