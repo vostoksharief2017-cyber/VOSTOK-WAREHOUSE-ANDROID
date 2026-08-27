@@ -264,29 +264,7 @@ public partial class MainPage : ContentPage
             // ExoPlayerBuilder media-source factory.
             // ====================================================
 
-            var rtspFactory =
-                new RtspMediaSourceFactory();
-
-
-            // Force RTP over TCP
-
-            rtspFactory.SetForceUseRtpTcp(
-                true);
-
-
-            // 15 second timeout
-
-            rtspFactory.SetTimeoutMs(
-                15000);
-
-
-            // ====================================================
-            // CREATE MEDIA SOURCE
-            // ====================================================
-
-            var mediaSource =
-                rtspFactory.CreateMediaSource(
-                    mediaItem);
+            
 
 
             // ====================================================
