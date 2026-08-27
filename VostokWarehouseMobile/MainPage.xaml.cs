@@ -14,7 +14,7 @@ namespace VostokWarehouseMobile;
 public partial class MainPage : ContentPage
 {
     // ============================================================
-    // HIKVISION CAMERA
+    // HIKVISION
     // ============================================================
 
     private const string HikvisionIp = "192.168.5.131";
@@ -26,10 +26,6 @@ public partial class MainPage : ContentPage
     private const string HikvisionRtsp =
         "rtsp://admin:Vos@3558817@192.168.5.131:554/Streaming/Channels/102";
 
-
-    // ============================================================
-    // CAMERA LIST
-    // ============================================================
 
     private readonly Dictionary<string, string> Cameras =
         new()
@@ -43,11 +39,11 @@ public partial class MainPage : ContentPage
 
 #if ANDROID
 
-    // ============================================================
-    // ANDROID MEDIA3
-    // ============================================================
+    // IMPORTANT:
+    // Use the .NET binding interface instead of the Java
+    // ExoPlayer class name.
 
-    private ExoPlayer? _player;
+    private IExoPlayer? _player;
 
     private SurfaceView? _surfaceView;
 
@@ -77,7 +73,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // PAGE APPEARING
+    // APPEARING
     // ============================================================
 
     protected override async void OnAppearing()
@@ -94,15 +90,13 @@ public partial class MainPage : ContentPage
 
             CreateVideoSurface();
 
-            await Task.Delay(300);
+            await Task.Delay(500);
 
             StartRtsp();
-
         }
         catch (Exception ex)
         {
-            StatusLabel.Text =
-                "RTSP Error";
+            StatusLabel.Text = "RTSP Error";
 
             System.Diagnostics.Debug.WriteLine(
                 "RTSP START ERROR: " + ex);
@@ -110,8 +104,7 @@ public partial class MainPage : ContentPage
 
 #else
 
-        StatusLabel.Text =
-            "Android required";
+        StatusLabel.Text = "Android required";
 
 #endif
     }
@@ -120,7 +113,7 @@ public partial class MainPage : ContentPage
 #if ANDROID
 
     // ============================================================
-    // CREATE NATIVE SURFACE
+    // CREATE SURFACE
     // ============================================================
 
     private void CreateVideoSurface()
@@ -144,7 +137,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // ADD SURFACE TO MAUI CONTENTVIEW
+    // ADD SURFACE TO MAUI
     // ============================================================
 
     private void AddSurfaceToPage()
@@ -187,10 +180,6 @@ public partial class MainPage : ContentPage
     }
 
 
-    // ============================================================
-    // HANDLER CHANGED
-    // ============================================================
-
     private void VideoContainer_HandlerChanged(
         object? sender,
         EventArgs e)
@@ -198,10 +187,8 @@ public partial class MainPage : ContentPage
         VideoContainer.HandlerChanged -=
             VideoContainer_HandlerChanged;
 
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            AddSurfaceToPage();
-        });
+        MainThread.BeginInvokeOnMainThread(
+            AddSurfaceToPage);
     }
 
 
@@ -220,25 +207,24 @@ public partial class MainPage : ContentPage
 
             StopPlayer();
 
-
             StatusLabel.Text =
                 "Creating Media3 player...";
 
 
             // ====================================================
-            // CREATE EXOPLAYER
+            // MEDIA3 PLAYER
             // ====================================================
 
             var context =
                 Android.App.Application.Context;
 
             _player =
-                new ExoPlayer.Builder(context)
+                new ExoPlayerBuilder(context)
                     .Build();
 
 
             // ====================================================
-            // VIDEO SURFACE
+            // CONNECT SURFACE
             // ====================================================
 
             if (_surfaceView != null)
@@ -249,7 +235,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // RTSP URL
+            // RTSP URI
             // ====================================================
 
             var uri =
@@ -266,24 +252,29 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // RTSP FACTORY
+            // RTSP MEDIA SOURCE
+            // ====================================================
+            //
+            // IMPORTANT:
+            // The Microsoft binding does not expose the Java
+            // RtspMediaSource.Factory exactly as shown in the
+            // Android Java documentation.
+            //
+            // Therefore we configure RTSP through the
+            // ExoPlayerBuilder media-source factory.
             // ====================================================
 
             var rtspFactory =
-                new RtspMediaSource.Factory();
+                new RtspMediaSourceFactory();
 
 
-            // ====================================================
-            // FORCE RTP OVER TCP
-            // ====================================================
+            // Force RTP over TCP
 
             rtspFactory.SetForceUseRtpTcp(
                 true);
 
 
-            // ====================================================
-            // 15 SECOND RTP TIMEOUT
-            // ====================================================
+            // 15 second timeout
 
             rtspFactory.SetTimeoutMs(
                 15000);
@@ -299,7 +290,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // SET MEDIA SOURCE
+            // SET SOURCE
             // ====================================================
 
             _player.SetMediaSource(
@@ -317,7 +308,7 @@ public partial class MainPage : ContentPage
 
 
             // ====================================================
-            // START PLAYBACK
+            // PLAY
             // ====================================================
 
             _player.PlayWhenReady =
@@ -326,18 +317,6 @@ public partial class MainPage : ContentPage
 
             StatusLabel.Text =
                 "RTSP connected - waiting for video...";
-
-
-            // ====================================================
-            // LISTEN FOR PLAYER STATE
-            // ====================================================
-
-            _player.PlaybackStateChanged +=
-                Player_PlaybackStateChanged;
-
-            _player.PlayerError +=
-                Player_PlayerError;
-
         }
         catch (Exception ex)
         {
@@ -346,85 +325,16 @@ public partial class MainPage : ContentPage
 
             System.Diagnostics.Debug.WriteLine(
                 "RTSP ERROR: " + ex);
+
+            MainThread.BeginInvokeOnMainThread(
+                async () =>
+                {
+                    await DisplayAlert(
+                        "RTSP Error",
+                        ex.Message,
+                        "OK");
+                });
         }
-    }
-
-
-    // ============================================================
-    // PLAYER STATE
-    // ============================================================
-
-    private void Player_PlaybackStateChanged(
-        object? sender,
-        ExoPlayer.PlaybackStateChangedEventArgs e)
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            if (_player == null)
-                return;
-
-            switch (_player.PlaybackState)
-            {
-                case IPlayer.StateIdle:
-
-                    StatusLabel.Text =
-                        "Player idle";
-
-                    break;
-
-
-                case IPlayer.StateBuffering:
-
-                    StatusLabel.Text =
-                        "Buffering RTSP video...";
-
-                    break;
-
-
-                case IPlayer.StateReady:
-
-                    StatusLabel.Text =
-                        "LIVE - Hikvision";
-
-                    break;
-
-
-                case IPlayer.StateEnded:
-
-                    StatusLabel.Text =
-                        "RTSP ended";
-
-                    break;
-
-
-                default:
-
-                    StatusLabel.Text =
-                        "RTSP status";
-
-                    break;
-            }
-        });
-    }
-
-
-    // ============================================================
-    // PLAYER ERROR
-    // ============================================================
-
-    private void Player_PlayerError(
-        object? sender,
-        ExoPlaybackExceptionEventArgs e)
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            StatusLabel.Text =
-                "RTSP ERROR";
-
-            System.Diagnostics.Debug.WriteLine(
-                "MEDIA3 ERROR: " +
-                e.ExoPlaybackException);
-        });
     }
 
 
@@ -438,12 +348,6 @@ public partial class MainPage : ContentPage
         {
             if (_player != null)
             {
-                _player.PlaybackStateChanged -=
-                    Player_PlaybackStateChanged;
-
-                _player.PlayerError -=
-                    Player_PlayerError;
-
                 _player.Stop();
 
                 _player.Release();
@@ -464,7 +368,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // CAMERA SELECTED
+    // CAMERA SELECTION
     // ============================================================
 
     private void CameraPicker_SelectedIndexChanged(
@@ -483,17 +387,15 @@ public partial class MainPage : ContentPage
 
 #if ANDROID
 
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            StartRtsp();
-        });
+        MainThread.BeginInvokeOnMainThread(
+            StartRtsp);
 
 #endif
     }
 
 
     // ============================================================
-    // PAGE DISAPPEARING
+    // DISAPPEARING
     // ============================================================
 
     protected override void OnDisappearing()
@@ -569,17 +471,9 @@ public partial class MainPage : ContentPage
                 $"Opening Door {doorNumber}...";
 
 
-            // ====================================================
-            // HIKVISION ISAPI
-            // ====================================================
-
             string url =
                 $"http://{HikvisionIp}/ISAPI/AccessControl/RemoteControl/door/{doorNumber}";
 
-
-            // ====================================================
-            // HIKVISION COMMAND
-            // ====================================================
 
             string xml =
                 @"<?xml version=""1.0"" encoding=""UTF-8""?>
@@ -587,10 +481,6 @@ public partial class MainPage : ContentPage
     <cmd>open</cmd>
 </RemoteControlDoor>";
 
-
-            // ====================================================
-            // DIGEST AUTHENTICATION
-            // ====================================================
 
             using var handler =
                 new HttpClientHandler
@@ -607,7 +497,6 @@ public partial class MainPage : ContentPage
             using var client =
                 new HttpClient(handler);
 
-
             client.Timeout =
                 TimeSpan.FromSeconds(5);
 
@@ -619,19 +508,11 @@ public partial class MainPage : ContentPage
                     "application/xml");
 
 
-            // ====================================================
-            // SEND COMMAND
-            // ====================================================
-
             HttpResponseMessage response =
                 await client.PutAsync(
                     url,
                     content);
 
-
-            // ====================================================
-            // SUCCESS
-            // ====================================================
 
             if (response.IsSuccessStatusCode)
             {
