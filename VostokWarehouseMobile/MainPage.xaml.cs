@@ -58,13 +58,17 @@ public partial class MainPage : ContentPage
 
             CameraStatus.Text = "Select a camera";
             StatusLabel.Text = "Ready";
+
             LiveViewMessage.Text =
-                "RTSP LIVE VIEW\n\nSelect a camera";
+                "SELECT A CAMERA";
         }
         catch (Exception ex)
         {
-            CameraStatus.Text = "Initialization error";
-            StatusLabel.Text = ex.Message;
+            CameraStatus.Text =
+                "Initialization failed";
+
+            StatusLabel.Text =
+                ex.Message;
         }
     }
 
@@ -77,60 +81,104 @@ public partial class MainPage : ContentPage
         object? sender,
         EventArgs e)
     {
+        if (CameraPicker.SelectedItem is not string cameraName)
+            return;
+
+        if (!cameras.TryGetValue(
+                cameraName,
+                out string? ip))
+        {
+            CameraStatus.Text =
+                "Camera IP not found.";
+
+            return;
+        }
+
+        await StartRtspAsync(
+            cameraName,
+            ip);
+    }
+
+
+    // ============================================================
+    // START RTSP
+    // ============================================================
+
+    private async Task StartRtspAsync(
+        string cameraName,
+        string ip)
+    {
         try
         {
-            if (CameraPicker.SelectedItem is not string cameraName)
-                return;
-
-            if (!cameras.TryGetValue(
-                    cameraName,
-                    out string? ip))
+            // Stop previous camera
+            try
             {
-                CameraStatus.Text = "Camera IP not found.";
-                return;
+                RtspPlayer.Stop();
+            }
+            catch
+            {
+                // Ignore
             }
 
+
+            string encodedPassword =
+                Uri.EscapeDataString(
+                    HikvisionPassword);
+
+
             string rtspUrl =
-                $"rtsp://{HikvisionUserName}:{Uri.EscapeDataString(HikvisionPassword)}" +
+                $"rtsp://{HikvisionUserName}:" +
+                $"{encodedPassword}" +
                 $"@{ip}:554/Streaming/Channels/101";
 
+
             CameraStatus.Text =
-                $"Selected: {cameraName}";
+                $"Connecting: {cameraName}";
+
 
             StatusLabel.Text =
-                $"Camera IP: {ip}";
+                $"RTSP: {ip}:554";
 
-            /*
-             * RTSP URL is generated here.
-             *
-             * A native MAUI Label is intentionally used instead
-             * of LibVLC/Media3/ExoPlayer so the application remains
-             * stable.
-             */
 
             LiveViewMessage.Text =
-                $"RTSP CAMERA\n\n{cameraName}\n\n" +
-                $"IP: {ip}\n\n" +
-                "RTSP URL READY\n\n" +
-                "Waiting for RTSP decoder";
+                $"CONNECTING...\n\n{cameraName}";
 
-            await DisplayAlertAsync(
-                "Camera Selected",
-                $"{cameraName}\n\nIP: {ip}\n\n" +
-                "RTSP URL created successfully.\n\n" +
-                "The camera is ready for the RTSP decoder.",
-                "OK");
+
+            // ----------------------------------------------------
+            // Assign Hikvision RTSP URL
+            // ----------------------------------------------------
+
+            RtspPlayer.Source =
+                rtspUrl;
+
+
+            // ----------------------------------------------------
+            // Start playback
+            // ----------------------------------------------------
+
+            RtspPlayer.ShouldAutoPlay =
+                true;
+
+
+            RtspPlayer.Play();
+
+
+            LiveViewMessage.Text =
+                "";
+
+
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
             CameraStatus.Text =
-                "Camera error";
+                "RTSP Error";
 
             StatusLabel.Text =
                 ex.Message;
 
             LiveViewMessage.Text =
-                "Camera error\n\n" + ex.Message;
+                $"RTSP ERROR\n\n{ex.Message}";
         }
     }
 
@@ -243,7 +291,6 @@ public partial class MainPage : ContentPage
 
             // ----------------------------------------------------
             // FIRST REQUEST
-            // Receive Digest challenge
             // ----------------------------------------------------
 
             using HttpRequestMessage firstRequest =
@@ -265,7 +312,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // DEVICE ACCEPTED WITHOUT DIGEST
+            // SUCCESS WITHOUT DIGEST
             // ----------------------------------------------------
 
             if (firstResponse.IsSuccessStatusCode)
@@ -280,7 +327,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // EXPECT DIGEST 401
+            // EXPECT HTTP 401
             // ----------------------------------------------------
 
             if (firstResponse.StatusCode !=
@@ -297,7 +344,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // GET DIGEST HEADER
+            // GET DIGEST CHALLENGE
             // ----------------------------------------------------
 
             string? authenticate =
@@ -400,7 +447,7 @@ public partial class MainPage : ContentPage
 
 
             // ----------------------------------------------------
-            // AUTHORIZATION HEADER
+            // AUTHORIZATION
             // ----------------------------------------------------
 
             string authorization =
@@ -608,7 +655,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // MD5 HASH
+    // MD5
     // ============================================================
 
     private static string
@@ -651,12 +698,20 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // PAGE CLEANUP
+    // CLEANUP
     // ============================================================
 
-    protected override void
-        OnDisappearing()
+    protected override void OnDisappearing()
     {
+        try
+        {
+            RtspPlayer.Stop();
+        }
+        catch
+        {
+            // Ignore
+        }
+
         base.OnDisappearing();
     }
 }
