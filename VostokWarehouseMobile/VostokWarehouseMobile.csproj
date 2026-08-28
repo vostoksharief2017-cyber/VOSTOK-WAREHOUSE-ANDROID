@@ -1,43 +1,96 @@
+```xml
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+
+    <!-- ===================================================== -->
+    <!-- TARGET                                                -->
+    <!-- ===================================================== -->
+
     <TargetFramework>net10.0-android</TargetFramework>
+
     <OutputType>Exe</OutputType>
 
     <RootNamespace>VostokWarehouseMobile</RootNamespace>
 
+
+    <!-- ===================================================== -->
+    <!-- APPLICATION                                           -->
+    <!-- ===================================================== -->
+
     <ApplicationTitle>VOSTOK-WAREHOUSE</ApplicationTitle>
+
     <ApplicationId>com.vostok.warehouse</ApplicationId>
 
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+
     <ApplicationVersion>1</ApplicationVersion>
 
-    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
 
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- ===================================================== -->
+    <!-- ANDROID                                               -->
+    <!-- ===================================================== -->
+
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+
+
+    <!-- ===================================================== -->
+    <!-- MAUI                                                  -->
+    <!-- ===================================================== -->
 
     <UseMaui>true</UseMaui>
+
     <SingleProject>true</SingleProject>
 
     <MauiVersion>10.0.31</MauiVersion>
+
+
+    <!-- ===================================================== -->
+    <!-- C#                                                    -->
+    <!-- ===================================================== -->
+
+    <Nullable>enable</Nullable>
+
+    <ImplicitUsings>enable</ImplicitUsings>
+
   </PropertyGroup>
+
+
+  <!-- ======================================================= -->
+  <!-- NUGET PACKAGES                                          -->
+  <!-- ======================================================= -->
 
   <ItemGroup>
 
+    <!-- .NET MAUI -->
     <PackageReference
       Include="Microsoft.Maui.Controls"
       Version="$(MauiVersion)" />
 
+
+    <!-- ===================================================== -->
+    <!-- ANDROID MEDIA3 EXOPLAYER                              -->
+    <!-- ===================================================== -->
+
     <PackageReference
       Include="Xamarin.AndroidX.Media3.ExoPlayer"
       Version="1.10.1.1" />
+
+
+    <!-- ===================================================== -->
+    <!-- ANDROID MEDIA3 RTSP                                   -->
+    <!-- ===================================================== -->
 
     <PackageReference
       Include="Xamarin.AndroidX.Media3.ExoPlayer.Rtsp"
       Version="1.10.1.1" />
 
   </ItemGroup>
+
+
+  <!-- ======================================================= -->
+  <!-- ANDROID PERMISSIONS                                     -->
+  <!-- ======================================================= -->
 
   <ItemGroup>
 
@@ -53,3 +106,4 @@
   </ItemGroup>
 
 </Project>
+```
