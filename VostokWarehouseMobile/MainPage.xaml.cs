@@ -12,15 +12,14 @@ namespace VostokWarehouseMobile;
 public partial class MainPage : ContentPage
 {
     // ============================================================
-    // HIKVISION CAMERA
+    // HIKVISION DEVICE
     // ============================================================
 
     private const string HikvisionIp = "192.168.5.131";
-
     private const string HikvisionUsername = "admin";
-
     private const string HikvisionPassword = "Vos@3558817";
 
+    // Hikvision sub-stream
     private const string HikvisionRtsp =
         "rtsp://admin:Vos@3558817@192.168.5.131:554/Streaming/Channels/102";
 
@@ -42,7 +41,7 @@ public partial class MainPage : ContentPage
 #if ANDROID
 
     // ============================================================
-    // MEDIA3 PLAYER
+    // MEDIA3 EXOPLAYER
     // ============================================================
 
     private IExoPlayer? _player;
@@ -60,17 +59,25 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
 
-        foreach (string cameraName in Cameras.Keys)
+        try
         {
-            CameraPicker.Items.Add(cameraName);
-        }
+            foreach (string cameraName in Cameras.Keys)
+            {
+                CameraPicker.Items.Add(cameraName);
+            }
 
-        if (CameraPicker.Items.Count > 0)
+            if (CameraPicker.Items.Count > 0)
+            {
+                CameraPicker.SelectedIndex = 0;
+            }
+
+            StatusLabel.Text = "Ready";
+        }
+        catch (Exception ex)
         {
-            CameraPicker.SelectedIndex = 0;
+            System.Diagnostics.Debug.WriteLine(
+                "CONSTRUCTOR ERROR: " + ex);
         }
-
-        StatusLabel.Text = "Ready";
     }
 
 
@@ -86,7 +93,7 @@ public partial class MainPage : ContentPage
 
         try
         {
-            StatusLabel.Text = "Starting RTSP...";
+            StatusLabel.Text = "Starting video...";
 
             await Task.Delay(500);
 
@@ -98,15 +105,15 @@ public partial class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            StatusLabel.Text = "RTSP Error";
+            StatusLabel.Text = "Video initialization failed";
 
             System.Diagnostics.Debug.WriteLine(
-                "RTSP START ERROR: " + ex);
+                "ON APPEARING ERROR: " + ex);
         }
 
 #else
 
-        StatusLabel.Text = "Android required";
+        StatusLabel.Text = "Android device required";
 
 #endif
     }
@@ -115,42 +122,53 @@ public partial class MainPage : ContentPage
 #if ANDROID
 
     // ============================================================
-    // CREATE VIDEO SURFACE
+    // CREATE ANDROID VIDEO SURFACE
     // ============================================================
 
     private void CreateVideoSurface()
     {
-        if (_surfaceView != null)
-            return;
+        try
+        {
+            if (_surfaceView != null)
+                return;
 
-        var context =
-            Android.App.Application.Context;
+            var context =
+                Android.App.Application.Context;
 
-        _surfaceView =
-            new SurfaceView(context);
+            _surfaceView =
+                new SurfaceView(context);
 
-        _surfaceView.LayoutParameters =
-            new Android.Views.ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MatchParent,
-                ViewGroup.LayoutParams.MatchParent);
+            _surfaceView.LayoutParameters =
+                new Android.Views.ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MatchParent,
+                    ViewGroup.LayoutParams.MatchParent);
 
-        AddSurfaceToPage();
+            AddSurfaceToPage();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                "CREATE SURFACE ERROR: " + ex);
+
+            StatusLabel.Text =
+                "Video surface error";
+        }
     }
 
 
     // ============================================================
-    // ADD SURFACE TO MAUI
+    // ADD SURFACE TO MAUI VIDEO CONTAINER
     // ============================================================
 
     private void AddSurfaceToPage()
     {
-        if (_surfaceView == null)
-            return;
-
-        if (VideoContainer.Handler?.PlatformView
-            is Android.Views.ViewGroup parent)
+        try
         {
-            try
+            if (_surfaceView == null)
+                return;
+
+            if (VideoContainer.Handler?.PlatformView
+                is Android.Views.ViewGroup parent)
             {
                 if (_surfaceView.Parent
                     is Android.Views.ViewGroup oldParent)
@@ -167,23 +185,26 @@ public partial class MainPage : ContentPage
 
                 StatusLabel.Text =
                     "Video surface ready";
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    "SURFACE ERROR: " + ex);
+
+                return;
             }
 
-            return;
+            VideoContainer.HandlerChanged -=
+                VideoContainer_HandlerChanged;
+
+            VideoContainer.HandlerChanged +=
+                VideoContainer_HandlerChanged;
         }
-
-        VideoContainer.HandlerChanged +=
-            VideoContainer_HandlerChanged;
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                "ADD SURFACE ERROR: " + ex);
+        }
     }
 
 
     // ============================================================
-    // HANDLER CHANGED
+    // MAUI HANDLER READY
     // ============================================================
 
     private void VideoContainer_HandlerChanged(
@@ -208,32 +229,42 @@ public partial class MainPage : ContentPage
     {
         try
         {
+            StatusLabel.Text =
+                "Starting RTSP player...";
+
+            // ----------------------------------------------------
+            // Make sure SurfaceView exists
+            // ----------------------------------------------------
+
             if (_surfaceView == null)
             {
                 CreateVideoSurface();
             }
 
+            // ----------------------------------------------------
+            // Stop previous player
+            // ----------------------------------------------------
+
             StopPlayer();
 
-            StatusLabel.Text =
-                "Creating Media3 player...";
-
-
-            // ====================================================
-            // CREATE EXOPLAYER
-            // ====================================================
+            // ----------------------------------------------------
+            // Android application context
+            // ----------------------------------------------------
 
             var context =
                 Android.App.Application.Context;
+
+            // ----------------------------------------------------
+            // Create Media3 ExoPlayer
+            // ----------------------------------------------------
 
             _player =
                 new ExoPlayerBuilder(context)
                     .Build();
 
-
-            // ====================================================
-            // SET VIDEO SURFACE
-            // ====================================================
+            // ----------------------------------------------------
+            // Connect player to SurfaceView
+            // ----------------------------------------------------
 
             if (_surfaceView != null)
             {
@@ -241,45 +272,43 @@ public partial class MainPage : ContentPage
                     _surfaceView);
             }
 
+            // ----------------------------------------------------
+            // RTSP URL
+            // ----------------------------------------------------
 
-            // ====================================================
-            // HIKVISION RTSP URL
-            // ====================================================
+            StatusLabel.Text =
+                "Connecting to camera...";
 
             var uri =
                 Android.Net.Uri.Parse(
                     HikvisionRtsp);
 
-
-            // ====================================================
-            // MEDIA ITEM
-            // ====================================================
+            // ----------------------------------------------------
+            // Create MediaItem
+            // ----------------------------------------------------
 
             var mediaItem =
                 MediaItem.FromUri(uri);
 
-
-            // ====================================================
-            // SET MEDIA ITEM
-            // ====================================================
+            // ----------------------------------------------------
+            // Give MediaItem to ExoPlayer
+            // ----------------------------------------------------
 
             _player.SetMediaItem(
                 mediaItem);
 
-
-            // ====================================================
-            // PREPARE
-            // ====================================================
+            // ----------------------------------------------------
+            // Prepare
+            // ----------------------------------------------------
 
             StatusLabel.Text =
-                "Connecting to Hikvision...";
+                "Preparing RTSP stream...";
 
             _player.Prepare();
 
-
-            // ====================================================
-            // PLAY
-            // ====================================================
+            // ----------------------------------------------------
+            // Start playback
+            // ----------------------------------------------------
 
             _player.PlayWhenReady = true;
 
@@ -307,7 +336,7 @@ public partial class MainPage : ContentPage
 
 
     // ============================================================
-    // STOP PLAYER
+    // STOP EXOPLAYER
     // ============================================================
 
     private void StopPlayer()
@@ -316,6 +345,8 @@ public partial class MainPage : ContentPage
         {
             if (_player != null)
             {
+                _player.PlayWhenReady = false;
+
                 _player.Stop();
 
                 _player.Release();
@@ -328,7 +359,9 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine(
-                "PLAYER STOP ERROR: " + ex);
+                "STOP PLAYER ERROR: " + ex);
+
+            _player = null;
         }
     }
 
@@ -343,40 +376,32 @@ public partial class MainPage : ContentPage
         object? sender,
         EventArgs e)
     {
-        if (CameraPicker.SelectedIndex < 0)
-            return;
-
-        string cameraName =
-            CameraPicker.Items[
-                CameraPicker.SelectedIndex];
-
-        CameraStatus.Text =
-            cameraName;
-
-#if ANDROID
-
-        MainThread.BeginInvokeOnMainThread(() =>
+        try
         {
-            StartRtsp();
-        });
+            if (CameraPicker.SelectedIndex < 0)
+                return;
 
-#endif
-    }
+            string cameraName =
+                CameraPicker.Items[
+                    CameraPicker.SelectedIndex];
 
+            CameraStatus.Text =
+                cameraName;
 
-    // ============================================================
-    // PAGE DISAPPEARING
-    // ============================================================
-
-    protected override void OnDisappearing()
-    {
 #if ANDROID
 
-        StopPlayer();
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                StartRtsp();
+            });
 
 #endif
-
-        base.OnDisappearing();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                "CAMERA SELECTION ERROR: " + ex);
+        }
     }
 
 
@@ -440,18 +465,16 @@ public partial class MainPage : ContentPage
             StatusLabel.Text =
                 $"Opening Door {doorNumber}...";
 
-
-            // ====================================================
-            // HIKVISION ISAPI URL
-            // ====================================================
+            // ----------------------------------------------------
+            // Hikvision ISAPI URL
+            // ----------------------------------------------------
 
             string url =
                 $"http://{HikvisionIp}/ISAPI/AccessControl/RemoteControl/door/{doorNumber}";
 
-
-            // ====================================================
-            // XML COMMAND
-            // ====================================================
+            // ----------------------------------------------------
+            // Hikvision XML
+            // ----------------------------------------------------
 
             string xml =
                 @"<?xml version=""1.0"" encoding=""UTF-8""?>
@@ -459,10 +482,9 @@ public partial class MainPage : ContentPage
     <cmd>open</cmd>
 </RemoteControlDoor>";
 
-
-            // ====================================================
-            // HIKVISION AUTHENTICATION
-            // ====================================================
+            // ----------------------------------------------------
+            // Authentication
+            // ----------------------------------------------------
 
             using var handler =
                 new HttpClientHandler
@@ -475,18 +497,15 @@ public partial class MainPage : ContentPage
                     PreAuthenticate = false
                 };
 
-
             using var client =
                 new HttpClient(handler);
-
 
             client.Timeout =
                 TimeSpan.FromSeconds(5);
 
-
-            // ====================================================
-            // REQUEST CONTENT
-            // ====================================================
+            // ----------------------------------------------------
+            // Content
+            // ----------------------------------------------------
 
             using var content =
                 new StringContent(
@@ -494,20 +513,18 @@ public partial class MainPage : ContentPage
                     Encoding.UTF8,
                     "application/xml");
 
-
-            // ====================================================
-            // SEND REQUEST
-            // ====================================================
+            // ----------------------------------------------------
+            // Send request
+            // ----------------------------------------------------
 
             HttpResponseMessage response =
                 await client.PutAsync(
                     url,
                     content);
 
-
-            // ====================================================
-            // SUCCESS
-            // ====================================================
+            // ----------------------------------------------------
+            // Success
+            // ----------------------------------------------------
 
             if (response.IsSuccessStatusCode)
             {
@@ -526,7 +543,7 @@ public partial class MainPage : ContentPage
                         .ReadAsStringAsync();
 
                 StatusLabel.Text =
-                    $"Door {doorNumber} failed";
+                    $"Door {doorNumber} Failed";
 
                 await DisplayAlertAsync(
                     "Door Error",
@@ -537,12 +554,28 @@ public partial class MainPage : ContentPage
         catch (Exception ex)
         {
             StatusLabel.Text =
-                $"Door {doorNumber} error";
+                $"Door {doorNumber} Error";
 
             await DisplayAlertAsync(
                 "Door Error",
                 ex.Message,
                 "OK");
         }
+    }
+
+
+    // ============================================================
+    // PAGE DISAPPEARING
+    // ============================================================
+
+    protected override void OnDisappearing()
+    {
+#if ANDROID
+
+        StopPlayer();
+
+#endif
+
+        base.OnDisappearing();
     }
 }
