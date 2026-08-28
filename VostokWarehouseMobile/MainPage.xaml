@@ -1,80 +1,289 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <ContentPage
+    x:Class="VostokWarehouseMobile.MainPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    x:Class="VostokWarehouseMobile.MainPage">
+    Title="VOSTOK WAREHOUSE"
+    BackgroundColor="Black">
 
     <Grid
         RowDefinitions="Auto,*,Auto"
-        Padding="10">
+        Padding="0">
 
-        <VerticalStackLayout
+        <!-- ===================================================== -->
+        <!-- HEADER                                                -->
+        <!-- ===================================================== -->
+
+        <Grid
             Grid.Row="0"
-            Spacing="8">
+            Padding="15,12"
+            BackgroundColor="#111111"
+            ColumnDefinitions="*,Auto">
+
+            <VerticalStackLayout
+                Grid.Column="0"
+                Spacing="2">
+
+                <Label
+                    Text="VOSTOK WAREHOUSE"
+                    FontSize="20"
+                    FontAttributes="Bold"
+                    TextColor="White" />
+
+                <Label
+                    Text="Security &amp; Access Control"
+                    FontSize="12"
+                    TextColor="LightGray" />
+
+            </VerticalStackLayout>
 
             <Label
-                Text="VOSTOK WAREHOUSE"
-                FontSize="24"
+                Grid.Column="1"
+                Text="● ONLINE"
+                FontSize="13"
                 FontAttributes="Bold"
-                HorizontalOptions="Center" />
+                TextColor="Lime"
+                VerticalOptions="Center" />
 
-            <Picker
-                x:Name="CameraPicker"
-                Title="Select Camera"
-                SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
+        </Grid>
 
-            <Label
-                x:Name="CameraStatus"
-                Text="Select a camera"
-                HorizontalOptions="Center" />
 
-            <Label
-                x:Name="StatusLabel"
-                Text="Starting..."
-                HorizontalOptions="Center"
-                FontSize="14" />
+        <!-- ===================================================== -->
+        <!-- MAIN CONTENT                                          -->
+        <!-- ===================================================== -->
 
-        </VerticalStackLayout>
+        <ScrollView
+            Grid.Row="1">
 
-        <Border
-            Grid.Row="1"
-            Margin="0,10"
-            StrokeThickness="1"
-            BackgroundColor="Black">
+            <VerticalStackLayout
+                Padding="12"
+                Spacing="12">
 
-            <ContentView
-                x:Name="VideoContainer"
-                BackgroundColor="Black"
-                HorizontalOptions="Fill"
-                VerticalOptions="Fill" />
 
-        </Border>
+                <!-- ================================================= -->
+                <!-- CAMERA SELECTION                                  -->
+                <!-- ================================================= -->
+
+                <Frame
+                    Padding="12"
+                    CornerRadius="10"
+                    BackgroundColor="#181818"
+                    BorderColor="#333333"
+                    HasShadow="False">
+
+                    <VerticalStackLayout
+                        Spacing="8">
+
+                        <Label
+                            Text="LIVE CAMERA"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+
+                        <Picker
+                            x:Name="CameraPicker"
+                            Title="Select Camera"
+                            TextColor="White"
+                            TitleColor="Gray"
+                            BackgroundColor="#252525"
+                            SelectedIndexChanged="CameraPicker_SelectedIndexChanged" />
+
+                        <Label
+                            x:Name="CameraStatus"
+                            Text="Hikvision Camera"
+                            FontSize="12"
+                            TextColor="LightGray" />
+
+                    </VerticalStackLayout>
+
+                </Frame>
+
+
+                <!-- ================================================= -->
+                <!-- VIDEO AREA                                        -->
+                <!-- ================================================= -->
+
+                <Frame
+                    Padding="0"
+                    CornerRadius="8"
+                    BackgroundColor="Black"
+                    BorderColor="#333333"
+                    HasShadow="False">
+
+                    <Grid
+                        x:Name="VideoContainer"
+                        HeightRequest="240"
+                        BackgroundColor="Black">
+
+                        <!-- Android SurfaceView is inserted here
+                             from MainPage.xaml.cs -->
+
+                        <VerticalStackLayout
+                            VerticalOptions="Center"
+                            HorizontalOptions="Center"
+                            Spacing="6">
+
+                            <Label
+                                Text="RTSP LIVE VIEW"
+                                FontSize="15"
+                                FontAttributes="Bold"
+                                TextColor="Gray"
+                                HorizontalTextAlignment="Center" />
+
+                            <Label
+                                x:Name="StatusLabel"
+                                Text="Ready"
+                                FontSize="12"
+                                TextColor="Gray"
+                                HorizontalTextAlignment="Center" />
+
+                        </VerticalStackLayout>
+
+                    </Grid>
+
+                </Frame>
+
+
+                <!-- ================================================= -->
+                <!-- DOOR CONTROL                                      -->
+                <!-- ================================================= -->
+
+                <Frame
+                    Padding="12"
+                    CornerRadius="10"
+                    BackgroundColor="#181818"
+                    BorderColor="#333333"
+                    HasShadow="False">
+
+                    <VerticalStackLayout
+                        Spacing="10">
+
+                        <Label
+                            Text="DOOR CONTROL"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+
+
+                        <!-- ========================================= -->
+                        <!-- DOOR 1                                     -->
+                        <!-- ========================================= -->
+
+                        <Button
+                            Text="OPEN DOOR 1"
+                            HeightRequest="50"
+                            CornerRadius="8"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            Clicked="Door1_Clicked" />
+
+
+                        <!-- ========================================= -->
+                        <!-- DOOR 2                                     -->
+                        <!-- ========================================= -->
+
+                        <Button
+                            Text="OPEN DOOR 2"
+                            HeightRequest="50"
+                            CornerRadius="8"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            Clicked="Door2_Clicked" />
+
+
+                        <!-- ========================================= -->
+                        <!-- DOOR 4                                     -->
+                        <!-- ========================================= -->
+
+                        <Button
+                            Text="OPEN DOOR 4"
+                            HeightRequest="50"
+                            CornerRadius="8"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            Clicked="Door4_Clicked" />
+
+
+                        <!-- ========================================= -->
+                        <!-- DOOR 5                                     -->
+                        <!-- ========================================= -->
+
+                        <Button
+                            Text="OPEN DOOR 5"
+                            HeightRequest="50"
+                            CornerRadius="8"
+                            BackgroundColor="#1976D2"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            Clicked="Door5_Clicked" />
+
+                    </VerticalStackLayout>
+
+                </Frame>
+
+
+                <!-- ================================================= -->
+                <!-- CONNECTION INFORMATION                            -->
+                <!-- ================================================= -->
+
+                <Frame
+                    Padding="12"
+                    CornerRadius="10"
+                    BackgroundColor="#181818"
+                    BorderColor="#333333"
+                    HasShadow="False">
+
+                    <VerticalStackLayout
+                        Spacing="5">
+
+                        <Label
+                            Text="CONNECTION"
+                            FontSize="14"
+                            FontAttributes="Bold"
+                            TextColor="White" />
+
+                        <Label
+                            Text="Camera IP: 192.168.5.131"
+                            FontSize="12"
+                            TextColor="LightGray" />
+
+                        <Label
+                            Text="Stream: Hikvision Channel 102"
+                            FontSize="12"
+                            TextColor="LightGray" />
+
+                        <Label
+                            Text="Network: Local LAN"
+                            FontSize="12"
+                            TextColor="LightGray" />
+
+                    </VerticalStackLayout>
+
+                </Frame>
+
+            </VerticalStackLayout>
+
+        </ScrollView>
+
+
+        <!-- ===================================================== -->
+        <!-- FOOTER                                                -->
+        <!-- ===================================================== -->
 
         <Grid
             Grid.Row="2"
-            ColumnDefinitions="*,*,*,*"
-            ColumnSpacing="5">
+            Padding="12,8"
+            BackgroundColor="#111111">
 
-            <Button
-                Grid.Column="0"
-                Text="Door WH-7"
-                Clicked="Door1_Clicked" />
-
-            <Button
-                Grid.Column="1"
-                Text="Door WH-9"
-                Clicked="Door2_Clicked" />
-
-            <Button
-                Grid.Column="2"
-                Text="Door WH-4"
-                Clicked="Door4_Clicked" />
-
-            <Button
-                Grid.Column="3"
-                Text="Door WH-5"
-                Clicked="Door5_Clicked" />
+            <Label
+                Text="VOSTOK TRADING LLC"
+                FontSize="11"
+                TextColor="Gray"
+                HorizontalTextAlignment="Center" />
 
         </Grid>
 
